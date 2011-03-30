@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<fxpProperties abbreviated="false" authoringTool="Flex Builder" compiles="true" parentProject="47294737-2ac3-4860-b9b4-90832382126f" projectUUID="47294737-2ac3-4860-b9b4-90832382126f" sdkVersion="4.0.0" uuid="65895001-92f5-43c7-b07b-f2688e8c4390" version="4">
+  <projects/>
+  <src/>
+  <swc>
+    <linked location="sdkPlaceHolder" path="sdkPlaceHolder" position="0" uuid="65895001-92f5-43c7-b07b-f2688e8c4390"/>
+    <linked location="C:/Users/qaz/Adobe Flash Builder 4/WEBORB/libs" path="/libs" position="1" uuid="82366ca1-e0b6-4b10-8f4e-ea385d6b18bd"/>
+  </swc>
+  <misc/>
+  <theme/>
+</fxpProperties>

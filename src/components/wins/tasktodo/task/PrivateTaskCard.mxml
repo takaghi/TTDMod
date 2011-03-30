@@ -1,0 +1,149 @@
+<?xml version="1.0" encoding="utf-8"?>
+<containers:MDIWindow xmlns:fx="http://ns.adobe.com/mxml/2009" 
+					  xmlns:s="library://ns.adobe.com/flex/spark" 
+					  xmlns:mx="library://ns.adobe.com/flex/mx" 
+					  layout="absolute" width="100%" height="100%" 
+					  title="{'Задача: '+data.private_id_task}" initialize="init()" 
+					  xmlns:utils="components.utils.*" xmlns:containers="flexmdi.containers.*">
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+	
+
+	<fx:Script>
+		<![CDATA[
+			import classes.Remote;
+			import classes.WinManager;
+			
+			import components.utils.Func;
+			
+			import flashx.textLayout.conversion.TextConverter;
+			import flashx.textLayout.elements.TextFlow;
+			
+			import mx.controls.Alert;
+			import mx.utils.ObjectProxy;
+			
+			import spark.events.IndexChangeEvent;
+			
+			[Bindable]
+			private var _data:ObjectProxy;
+			[Bindable]
+			private var task_dsc:TextFlow;
+						
+			private var actionMethod:String;
+			
+			private function init():void{
+			}			
+
+			override public function set data(d:Object):void{
+				//this._data = d;
+				Remote.setRequest("PrivateTask", this, "getOne", null, d.id_private_task);				
+			}
+			
+			public function PrivateTask_getOneResult(result:Object):void{
+				if(result.data.length>0){
+					_data = new ObjectProxy(result.data[0]);
+					if(Func.compareStrings(_data.name, _data.dsc)){
+						task_dsc = TextConverter.importToFlow(("<b>"+_data.name+"</b>"), TextConverter.TEXT_FIELD_HTML_FORMAT);
+					}else{
+						task_dsc = TextConverter.importToFlow(("<b>"+_data.name+'</b><br/>\n\n '+ Func.getHTML(_data.dsc)), TextConverter.TEXT_FIELD_HTML_FORMAT);
+					}
+
+				}else{
+					if(result.messages.length > 0){
+						Alert.show(Globals.errors["err"+result.messages[0].code], "Ошибка", Alert.OK);
+					}
+				}
+			}
+						
+			private function edit():void{
+				var winTitle:String = "";
+				winTitle = "Редактирование задачи: "+ _data.id_private_task;				
+				WinManager.close_open(this, "PrivateTask", _data, winTitle);
+			}
+			
+			
+			private function action(e:MouseEvent):void{
+				actionMethod = e.currentTarget.id;
+				actionDo();
+			}
+			public function actionDo(param:Object = null):void{
+				Remote.setRequest("PrivateTask", this, actionMethod, param, _data.id_private_task);
+			}
+			
+			public function PrivateTask_completeResult(res:Object):void{
+				if(res.data["complete"]){
+					WinManager.close_open(this);
+				}
+			}
+			public function PrivateTask_cancelResult(res:Object):void{
+				if(res.data["cancel"]){
+					WinManager.close_open(this);
+				}
+			}
+			public function PrivateTask_deleteResult(res:Object):void{
+				if(res.data["delete"]){
+					WinManager.close_open(this);
+				}
+			}
+			
+			private function delay(e:IndexChangeEvent):void{
+				var param:Object = {time:UserDropDownList(e.currentTarget).selectedItem.value};
+				Remote.setRequest("PrivateTask", this, "delay", param, _data.id_private_task);
+			}
+			public function PrivateTask_delayResult(res:Object):void{
+				if(res.data["delay"]){
+					WinManager.close_open(this);
+				}
+			}
+
+		]]>
+	</fx:Script>
+	<s:VGroup right="0" left="0" top="10" bottom="40" textAlign="center" horizontalAlign="center" gap="4">
+		<s:HGroup width="100%" verticalAlign="middle" paddingLeft="10" gap="2">
+			<s:Label text="Проект:"/>
+			<s:Label text="{_data.id_project_text}" fontWeight="bold" paddingRight="10"/>
+			<s:Label text="Статус:" verticalAlign="middle" paddingTop="2"/>
+			<s:Label text="{Globals.getVar(_data.status)}" verticalAlign="middle" paddingTop="2" fontWeight="bold"/>
+			<s:Label text="Поставлена:" verticalAlign="middle" paddingTop="2"/>
+			<s:Label text="{Func.convertStringDate(_data.date_plan_start)}" fontWeight="bold" paddingRight="10"/>
+			<s:Label visible="{_data.remind==1}" text="{Func.convertStringDateTime(_data.remind_datetime)}" width="100%" textAlign="right" fontWeight="bold" paddingRight="10"/>
+			
+			<s:HGroup right="0" top="0" gap="0" verticalAlign="middle" textAlign="right">
+				<s:Label id="urgency" text="Важная!" initialize="{urgency.visible=false}" visible="{ _data.urgency == 1}" includeInLayout="{ _data.urgency == 1}" width="80" textAlign="center" height="22" verticalAlign="middle" backgroundColor="#FF0000" color="#FFFFFF" fontWeight="bold" paddingTop="2"/>
+			</s:HGroup>
+		</s:HGroup>
+		<utils:TitleGroup title="Описание задачи" width="100%" height="100%">
+			<s:TextArea textFlow="{task_dsc}"
+						borderVisible="false" editable="false"
+						textAlign="left" right="0" left="0" top="5" bottom="0"/>					
+		</utils:TitleGroup>
+		<s:VGroup id="fileLink" initialize="Func.initHide(event)" 
+				  visible="{_data.link_folder.length != '' || _data.link != ''}"
+				  includeInLayout="{_data.link_folder.length != '' || _data.link != ''}"
+				  width="100%">			
+			<s:HGroup id="linkGroup" initialize="{linkGroup.height=0}"
+					  height="{(_data.link!='')?NaN:0}"
+					  width="100%" verticalAlign="middle">
+				<s:Label text="URL" verticalAlign="middle" paddingTop="2" width="50" textAlign="right"/>
+				<mx:LinkButton label="{_data.link}" textAlign="left" click="Func.openFileLinkButton(event)" fontWeight="bold"/>
+			</s:HGroup>					
+		</s:VGroup>		
+	</s:VGroup>
+	<s:HGroup bottom="10" left="10" id="buttonsGroup">
+		<s:Button id="complete" label="Выполнить" click="action(event)"/>
+		<utils:UserDropDownList prompt="Отложить на" id="time" change="delay(event)">
+			<mx:ArrayCollection>
+				<fx:Object id="d1" value="3600" label="1 час"/>
+				<fx:Object id="d2" value="86400" label="1 сутки"/>
+				<fx:Object id="d3" value="172800" label="2 дня"/>
+				<fx:Object id="d4" value="604800" label="1 неделя"/>
+			</mx:ArrayCollection>
+		</utils:UserDropDownList>
+		<s:Button label="Редактировать" click="edit()" />
+		<s:Button id="cancel" label="Удалить" click="action(event)"/>
+	</s:HGroup>
+	<s:HGroup right="10" bottom="10">
+		<s:Button label="Закрыть" click="{WinManager.close_open(this);}"/>
+	</s:HGroup>
+</containers:MDIWindow>

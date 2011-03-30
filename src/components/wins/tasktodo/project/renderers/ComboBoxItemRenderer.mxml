@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:MXDataGridItemRenderer xmlns:fx="http://ns.adobe.com/mxml/2009" 
+						  xmlns:s="library://ns.adobe.com/flex/spark" 
+						  xmlns:mx="library://ns.adobe.com/flex/mx" initialize="init()">
+	<fx:Script>
+		<![CDATA[
+			import spark.events.IndexChangeEvent;
+			
+			private var par:*;
+
+			private function init():void{				
+				lblData.dataProvider = this.document.parentObj._projectsData;
+				par = this.document.parentObj;
+				callLater(function():void{lblData.setFocus();});
+				
+			}
+			
+			public function updateData(event:IndexChangeEvent):void{
+				if(lblData.selectedIndex >= 0){
+					trace(lblData.selectedItem.id_project)
+					par.updateFromCombo(event);
+				}
+			}
+
+
+		]]>
+	</fx:Script>
+	
+	<s:ComboBox id="lblData" change="updateData(event)" labelField="name" top="0" left="0" right="0" bottom="0" />
+</s:MXDataGridItemRenderer>

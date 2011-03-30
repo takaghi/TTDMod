@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:SkinnableContainer xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		 xmlns:s="library://ns.adobe.com/flex/spark" 
+		 xmlns:mx="library://ns.adobe.com/flex/mx"
+		 skinClass="components.utils.skins.TitleGroupSkin" initialize="init()">
+	
+	
+	<fx:Metadata>
+		[SkinState("opened")]
+		[SkinState("normal")]		
+	</fx:Metadata>
+	
+	<fx:Metadata>
+		[Event(name="open", type="*")]
+		[Event(name="close", type="*")]
+	</fx:Metadata>
+	
+	<fx:Script><![CDATA[
+		[Bindable]
+		public var title:String = "";
+		[Bindable]
+		public var bounce:Boolean = false;
+		[Bindable]
+		public var bounceOpen:Boolean = true;
+		public var maxBounceHeight:Number;		
+		public var minBounceHeight:Number = 18;
+		
+		private var _opened:Boolean = false;
+		
+		[Bindable]
+		public var paddingLeft:Number = 10;
+		[Bindable]
+		public var paddingRight:Number = 10;
+		[Bindable]
+		public var backgroundColor:uint;
+		
+		private function init():void{
+			backgroundColor = this.parentDocument.getStyle('backgroundColor');
+			bounceOpen = !bounce;
+			if(bounce){
+				height = minBounceHeight;
+				for(var i:int=0; i<numChildren; i++){
+					if(getChildAt(i).name.search("_bounce")>0)
+						getChildAt(i).visible = false;
+				}
+			}
+		}
+		public function bounceMe():void{
+			var i:int;
+			if(height == minBounceHeight){
+				height = maxBounceHeight;
+				bounceOpen = true;
+				_opened = true;
+				dispatchEvent(new Event("open"));
+			}
+			else{
+				height = minBounceHeight;
+				bounceOpen = false;
+				_opened = false;
+				dispatchEvent(new Event("close"));
+			}
+			invalidateSkinState();
+		}
+		
+		override protected function getCurrentSkinState() : String{
+			if (_opened)
+				return "opened";
+			return "normal"
+		}
+	]]></fx:Script>	
+</s:SkinnableContainer>

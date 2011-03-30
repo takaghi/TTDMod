@@ -1,0 +1,154 @@
+<?xml version="1.0" encoding="utf-8"?>
+<containers:MDIWindow xmlns:fx="http://ns.adobe.com/mxml/2009" 
+					  xmlns:s="library://ns.adobe.com/flex/spark" 
+					  xmlns:mx="library://ns.adobe.com/flex/mx" 
+					  xmlns:containers="flexmdi.containers.*" layout="absolute" 
+					  width="664" height="338" xmlns:utils="components.utils.*"
+					  title="Статистика календаря" initialize="init()"
+					  >
+	<fx:Declarations>
+		<s:RadioButtonGroup id="dataSelect"/>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+	
+	<fx:Script>
+		<![CDATA[
+			import classes.CalendarOperator;
+			import classes.Remote;
+			
+			import components.utils.Func;
+			
+			import mx.collections.ArrayCollection;
+			import mx.collections.HierarchicalData;
+			import mx.events.ListEvent;
+			
+		
+			[Bindable]
+			private var _list:ArrayCollection;
+			
+			private var _multiList:ArrayCollection;
+			private var _multicharts:Array;
+			
+			[Bindable]
+			private var _users:ArrayCollection;
+			
+			private function show():void{
+				
+			}
+			
+			private function init():void{
+				getList();
+				getUsers();
+			}
+			private function getDateString():String{
+				var d:Date = new Date();
+				return  d.fullYearUTC+"-"+(((d.month+1<10)) ? ("0"+(d.month+1)):(d.month+1).toString());
+			}
+			
+			private function getList(id_staff:String = "", dataID:String = ""):void{
+				if(id_staff=="")
+					id_staff = Globals.id_staff;
+				if(dataID!="")
+					Remote.setRequest("Calendar", this, "getList", {id_staff:id_staff, date:getDateString()}, null, dataID);		
+				else
+					Remote.setRequest("Calendar", this, "getList", {id_staff:id_staff, date:getDateString()});		
+			}			
+			public function Calendar_getListResult(result:Object, dataID:String = ""):void{
+				var arr:Array = result.data.days as Array;	
+				if(dataID=="")
+					_list = formatData(new CalendarOperator(arr, false).getDays());
+				else
+					_list = formatData2(new CalendarOperator(arr, false).getDays(), dataID);
+			}
+			
+			private function formatData(arr:Array):ArrayCollection{
+				var temp:Array = [];
+				for(var i:int=0; i < arr.length; i++){
+					arr[i].total = Func.convertStringTimeToNumber2(arr[i].date.total);
+					if(i > new Date().date-1)
+						break;
+					if(arr[i].date.status != "weekend"){
+						temp.push(arr[i]);
+					}
+				}
+				return new ArrayCollection(temp);
+			}
+			
+			private function formatData2(arr:Array, dataID:String):ArrayCollection{
+
+				for(var i:int=0; i < arr.length; i++){
+					if(i > new Date().date-1)
+						break;
+					
+					if(_multiList.length <= i){
+						var o:Object = {};
+						o[dataID] = Func.convertStringTimeToNumber2(arr[i].date[dataSelect.selectedValue]);	
+						o.day = arr[i].day;
+						o.status = arr[i].date.status;
+						_multiList.addItemAt(o, i);
+					}else{
+						_multiList.getItemAt(i)[dataID] = Func.convertStringTimeToNumber2(arr[i].date[dataSelect.selectedValue]);
+					}
+					
+				}
+				var line:LineSeries = new LineSeries();
+				line.yField = dataID;
+				line.displayName = dataID;
+				_multicharts.push(line);
+				linechart.series = _multicharts;
+					
+				return _multiList;
+			}
+			
+			private function getUsers(param:Object = null):void{
+				Remote.setRequest("Users", this, "getLiteList");
+			}
+			public function Users_getLiteListResult(result:Object):void{
+				_users = new ArrayCollection(result.data as Array);			
+			}
+			
+			private function initUserList():void{
+				userList.addEventListener(ListEvent.CHANGE, updateData);
+			}
+			
+			private function updateData(e:Event = null):void{
+				_multiList = new ArrayCollection();
+				_multicharts = [];
+				for(var i:int = 0; i<userList.selectedItems.length; i++){
+					getList(userList.selectedItems[i].id_staff, userList.selectedItems[i].name_first+" "+userList.selectedItems[i].name_second)
+				}
+			}
+
+			
+		]]>
+	</fx:Script>
+	<utils:TitleGroup title="Фильтр" height="100%" right="0" top="0" width="180">
+		<s:VGroup width="100%" height="100%">
+			<mx:List width="100%" creationComplete="initUserList()" id="userList" labelField="name_second" labelFunction="Func.myNameLabelFunction" 
+					 dataProvider="{_users}" allowMultipleSelection="true" selectedIndex="{Func.getProviderIndex(_users, 'id_staff', Globals.id_staff)}" 			
+					 right="24" top="0" contentBackgroundColor="#E9EFF1" height="100%"/>
+			<s:RadioButton change="updateData()" x="0" y="265" label="Всего" value="total" groupName="dataSelect" selected="true"/>
+			<s:RadioButton change="updateData()" x="0" y="291" label="Приход" value="time_start" groupName="dataSelect"/>
+			<s:RadioButton change="updateData()" x="0" y="317" label="Уход" value="time_finish" groupName="dataSelect"/>
+		</s:VGroup>
+	</utils:TitleGroup>
+	
+
+	
+	<mx:LineChart id="linechart" color="0x323232"
+				  showDataTips="true" dataProvider="{_list}" top="10" bottom="10" left="10" right="180">
+		
+		<mx:horizontalAxis>
+			<mx:CategoryAxis categoryField="day"/>
+		</mx:horizontalAxis>
+
+		
+		<mx:series>
+			<mx:LineSeries yField="total" form="segment" displayName="total"/>
+		</mx:series>
+	</mx:LineChart>
+	
+	<mx:Legend dataProvider="{linechart}" color="0x323232" right="180" top="10"/>
+	
+	
+</containers:MDIWindow>

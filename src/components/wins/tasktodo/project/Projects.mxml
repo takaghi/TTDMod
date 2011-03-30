@@ -1,0 +1,198 @@
+<?xml version="1.0" encoding="utf-8"?>
+<containers:MDIWindow xmlns:fx="http://ns.adobe.com/mxml/2009" 
+					  xmlns:s="library://ns.adobe.com/flex/spark" 
+					  xmlns:mx="library://ns.adobe.com/flex/mx" 
+					  xmlns:containers="flexmdi.containers.*" layout="absolute"
+					  title="Проекты" xmlns:utils="components.utils.*"
+					  width="100%" height="100%"
+					  initialize="init()" close="onClose()">
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+	
+	<fx:Script>
+		<![CDATA[
+			import classes.Remote;
+			
+			import components.utils.Func;
+			
+			import mx.collections.ArrayCollection;
+			import mx.controls.Alert;
+			import mx.events.CloseEvent;
+			import mx.events.FlexEvent;
+			
+			[Bindable]
+			private var _projects:ArrayCollection;
+			
+			/**
+			 * Превед
+			 */
+			private function init():void{
+				getProjects();	
+				this.addEventListener(KeyboardEvent.KEY_DOWN, onKeyDown);
+			}
+			
+			private function onKeyDown(e:KeyboardEvent):void{
+				if(e.keyCode == 116){
+					getProjects();
+				}
+			}
+		
+			public function getProjects(param:Object = null):void{
+				Remote.setRequest("Projects", this, "getList", param);
+			}
+			public function Projects_getListResult(result:Object):void{
+				if(result.data){
+					var res:Array = result.data as Array;
+					this.title = "Проекты ("+ res.length+")";
+				}
+				if(result.data && res.length>0){
+					_projects = new ArrayCollection(res);					
+				}else{
+					if(result.messages.length>0){
+						Alert.show( "Server reported an error - " + result.messages[0].text, "Error" );
+					}
+				}
+			}
+			
+			private function editProject(data:Object):void{	
+				Remote.setRequest("Projects", this, "edit", {name:data.name, folder: data.folder}, data.id_project);
+			}
+			public function Projects_editResult(result:Object):void{
+				getProjects();	
+			}
+			
+			private function addProject():void{
+				Remote.setRequest("Projects", this, "add", {name: newProject_name.text, folder: newProject_folder.text});
+			}
+			public function Projects_addResult(result:Object):void{
+					getProjects();	
+			}
+
+			public function delProjectQ():void{
+				if(projectsTable.selectedItem == null)
+					return;
+
+				Alert.noLabel = "Нет";
+				Alert.yesLabel = "Да";
+				var a:Alert = Alert.show("Удалить проект: "+projectsTable.selectedItem.name+" ?", "Внимание!", Alert.YES | Alert.NO, null, delUserAlertListener);				
+				a.width = 220;
+				
+				function delUserAlertListener(e:CloseEvent):void{
+					if (e.detail == Alert.YES) {
+						//Alert.show("Стереть воспоминания?", "Контрольный вопрос", Alert.YES | Alert.NO);
+						delProject(projectsTable.selectedItem.id_project);
+					}
+				}
+			}
+			private function delProject(id:String):void{
+				Remote.setRequest("Projects", this, "delete", null, id);
+			}
+			public function Projects_deleteResult(result:Object):void{
+				getProjects();	
+			}					
+			
+
+			protected function doubleEditHandler(event:Event):void{
+				editProject(event.target.actRenderer.data);
+			}
+
+			public function projectsTableFilterHandler(o:Object):void{
+				getProjects(o);
+			}
+			
+			private function onClose():void{
+				this.removeEventListener(FlexEvent.INITIALIZE, init);
+				this.addEventListener(KeyboardEvent.KEY_DOWN, onKeyDown);
+				projectsTable = null;
+				_projects = null;
+			}
+			
+			
+			private function setPath(textField:String = "", func:String = ""):void{
+				var directory:File;
+				var path:String = "";
+				var component:Object = this;
+				directory = File.documentsDirectory;
+				
+				try	{
+					directory.browseForDirectory("Select Directory");
+					directory.addEventListener(Event.SELECT, directorySelected);
+				}
+				catch (error:Error){
+					trace("Failed:", error.message);
+				}
+				/**
+				 * 	Проверка папки наличия файлов
+				 */
+				function directorySelected(event:Event=null):void {
+					directory = event.target as File;
+					path = directory.nativePath;
+					if(textField!="")
+						component[textField].text = path;
+					if(func!="")
+						component[func](path);
+				}
+			}
+			
+			
+			private function getContextMenu(table:myDataGrid):ContextMenu{				
+				var cm:ContextMenu = new ContextMenu();				
+				var del:NativeMenuItem = new NativeMenuItem("Удалить");
+				del.addEventListener(Event.SELECT, function():void{delProjectQ()});
+				var go:NativeMenuItem = new NativeMenuItem("Перейти в папку");
+				go.addEventListener(Event.SELECT, function():void{goTo(table.selectedItem)});
+				var copy:NativeMenuItem = new NativeMenuItem("Копировать путь");
+				copy.addEventListener(Event.SELECT, function():void{copyTask(table.selectedItem)});
+				//			var add:NativeMenuItem = new NativeMenuItem("Добавить");
+				//			add.addEventListener(Event.SELECT, function():void{action("add")});
+				
+				var items:Array = [];			
+				if(Globals.access.project_del)
+					items.push(del);
+				items.push(Func.getMenuSeparator());
+				items.push(go);
+				items.push(Func.getMenuSeparator());
+				items.push(copy);
+				/*	items.push(Func.getMenuSeparator());
+				if(Globals.access.staff_add)
+				items.push(add);*/
+				
+				cm.items = items;
+				
+				return cm;
+			}
+			
+			private function copyTask(item:Object):void{
+				System.setClipboard(item.folder);
+			}
+			
+			private function goTo(item:Object):void{
+				var url:String = item.folder;				
+				Func.openFile(url);
+			}
+			
+		]]>
+	</fx:Script>	
+		<utils:myDataGrid width="100%" dataProvider="{_projects}" context="{getContextMenu(projectsTable)}"
+						  id="projectsTable" mydoubleClickEnabled="{Globals.access.project_edit}"
+						  mydoubleClickEdit="{Globals.access.project_edit}" doubleEdit="doubleEditHandler(event)"
+						  parentObj="{this}"
+						  filter="true" bottom="40" top="0" left="0">
+			<utils:columns>
+				<mx:DataGridColumn headerText="Название проекта" dataField="name"/>           
+				<mx:DataGridColumn headerText="Папка проекта" dataField="folder"/>           
+			</utils:columns>
+		</utils:myDataGrid>
+	<!--	<s:Button id="add" label="Добавить проект" click="addProject()" bottom="10" left="310" enabled="{Globals.access.project_add}"/>
+		<s:TextInput width="289" id="newProject_name" bottom="10" left="10" enabled="{Globals.access.project_add}"/>
+		<s:Button id="del" label="Удалить проект" left="435" bottom="10" click="delProjectQ()" enabled="{Globals.access.project_del}"/>-->
+	
+		<s:HGroup left="10" bottom="8" visible="{Globals.access.private_list_edit}">
+			<s:TextInput styleName="def" width="200" id="newProject_name" enabled="{Globals.access.project_add}" text="Название" focusIn="Func.placeHolderTextInputOnFocusIn(event, 'Название')"/>
+			<s:TextInput styleName="def" width="289" id="newProject_folder" enabled="{Globals.access.project_add}" text="Папка" focusIn="Func.placeHolderTextInputOnFocusIn(event, 'Папка')"/>
+			<s:Button id="but" label="Папка" click="setPath('newProject_folder')"/>
+			<s:Button label="Добавить" click="addProject()" enabled="{Globals.access.project_add}"/>
+		</s:HGroup>
+
+</containers:MDIWindow>

@@ -1,0 +1,246 @@
+<?xml version="1.0" encoding="utf-8"?>
+<containers:MDIWindow xmlns:fx="http://ns.adobe.com/mxml/2009" 
+					  xmlns:s="library://ns.adobe.com/flex/spark" 
+					  xmlns:mx="library://ns.adobe.com/flex/mx" 
+					  xmlns:containers="flexmdi.containers.*" layout="absolute"
+					  title="Админ.части" xmlns:utils="components.utils.*"
+					  width="100%" height="100%" minWidth="730"
+					  initialize="init()">
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+	
+	<fx:Script>
+		<![CDATA[
+			import classes.Remote;
+			import classes.StatusManager;
+			
+			import components.utils.Func;
+			import components.wins.tasktodo.project.renderers.ComboBoxItemRenderer;
+			
+			import mx.collections.ArrayCollection;
+			import mx.controls.Alert;
+			import mx.controls.DataGrid;
+			import mx.events.CloseEvent;
+			import mx.events.FlexEvent;
+			import mx.events.ListEvent;
+			
+			import spark.events.IndexChangeEvent;
+			
+			[Bindable]
+			private var _projects:ArrayCollection;
+			
+			[Bindable]
+			public var _projectsData:ArrayCollection;
+			
+			/**
+			 * Превед
+			 */
+			private function init():void{
+				getProjects();	
+				getPrivateList();	
+				this.addEventListener(KeyboardEvent.KEY_DOWN, onKeyDown);
+			}
+			
+			private function onKeyDown(e:KeyboardEvent):void{
+				if(e.keyCode == 116){
+					getPrivateList();
+				}
+			}
+			
+			public function getPrivateList(param:Object = null):void{
+				Remote.setRequest("PrivateList", this, "getList", param);
+			}
+			public function PrivateList_getListResult(result:Object):void{
+				if(result.data){
+					var res:Array = result.data as Array;
+					this.title = "Админ.части ("+ res.length+")";
+				}
+				if(result.data && res.length>0){
+					_projects = new ArrayCollection(res);					
+				}else{
+					if(result.messages.length>0){
+						Alert.show( "Server reported an error - " + result.messages[0].text, "Error" );
+					}
+				}
+			}
+			
+			private function getProjects(param:Object = null):void{
+				Remote.setRequest("Projects", this, "getLiteList", param);	
+			}
+			public function Projects_getLiteListResult(result:Object):void{
+				_projectsData = new ArrayCollection(result.data as Array);
+				id_project.dataProvider = _projectsData;
+			}
+			
+			
+			private function getContextMenu(table:myDataGrid):ContextMenu{				
+				var cm:ContextMenu = new ContextMenu();				
+				var del:NativeMenuItem = new NativeMenuItem("Удалить");
+				del.addEventListener(Event.SELECT, function():void{delProjectQ()});
+				var go:NativeMenuItem = new NativeMenuItem("Перейти");
+				go.addEventListener(Event.SELECT, function():void{goTo(privateTable.selectedItem)});
+				var copy:NativeMenuItem = new NativeMenuItem("Копировать пароль");
+				copy.addEventListener(Event.SELECT, function():void{copyTask(privateTable.selectedItem)});
+	//			var add:NativeMenuItem = new NativeMenuItem("Добавить");
+	//			add.addEventListener(Event.SELECT, function():void{action("add")});
+				
+				var items:Array = [];			
+				if(Globals.access.private_list_edit)
+					items.push(del);
+				items.push(Func.getMenuSeparator());
+				items.push(go);
+				items.push(Func.getMenuSeparator());
+				items.push(copy);
+			/*	items.push(Func.getMenuSeparator());
+				if(Globals.access.staff_add)
+					items.push(add);*/
+				
+				cm.items = items;
+				
+				return cm;
+			}
+			
+			private function copyTask(item:Object):void{
+				System.setClipboard(item.password);
+			}
+			
+			private function goTo(item:Object):void{
+				var url:String = item.url;
+				
+				if(url.search("http://")<0)
+					url = "http://" + url;
+				
+				Func.openLink(url);
+			}
+			
+			private function editProject(data:Object):void{	
+				Remote.setRequest("PrivateList", this, "edit", {id_project: data.id_project, url:data.url, login:data.login, password: data.password}, data.id_site);
+			}
+			public function PrivateList_editResult(result:Object):void{
+				getPrivateList();	
+			}
+			
+			private function addProject():void{
+				if(
+					id_project.selectedIndex >= 0 &&
+					newProject_url.text.length>0 && newProject_url.text != "Адрес" &&
+					newProject_login.text.length>0 && newProject_login.text != "Логин" &&
+					newProject_password.text.length>0 && newProject_password.text != "Пароль")
+					Remote.setRequest("PrivateList", this, "add", {id_project: id_project.selectedItem.id_project, url:newProject_url.text, login:newProject_login.text, password:newProject_password.text});
+			}
+			public function PrivateList_addResult(result:Object):void{
+				getPrivateList();	
+			}
+			
+			public function delProjectQ():void{
+				if(privateTable.selectedItem == null)
+					return;
+				
+				Alert.noLabel = "Нет";
+				Alert.yesLabel = "Да";
+				var a:Alert = Alert.show("Удалить проект: "+privateTable.selectedItem.url+" ?", "Внимание!", Alert.YES | Alert.NO, null, delUserAlertListener);				
+			//	a.width = 220;
+				
+				function delUserAlertListener(e:CloseEvent):void{
+					if (e.detail == Alert.YES) {
+						//Alert.show("Стереть воспоминания?", "Контрольный вопрос", Alert.YES | Alert.NO);
+						delProject(privateTable.selectedItem.id_site);
+					}
+				}
+			}
+			private function delProject(id:String):void{
+				Remote.setRequest("PrivateList", this, "delete", null, id);
+			}
+			public function PrivateList_deleteResult(result:Object):void{
+				getPrivateList();	
+			}					
+			
+			
+			protected function doubleEditHandler(event:Event = null):void{
+				editProject(privateTable.actRenderer.data);
+			}
+			
+			public function projectsTableFilterHandler(o:Object):void{
+				//getProjects(o);
+			}
+			
+			private function onKeyUp(e:KeyboardEvent):void{
+				if(e.keyCode == 13){
+					addProject();
+				}
+			}
+			
+			
+			private function onItemClick():void{
+				var o:Object = privateTable.selectedItem;
+			//	<s:ComboBox labelField="name" id="id_project"  width="170"/>
+				newProject_url.text = o.url;
+				newProject_login.text = o.login;
+				newProject_password.text = o.password;
+			}
+			
+		/*	public function addData(event:FlexEvent) : void{
+				var w:* = proj
+				ComboBox(event.target.comboRenderer).dataProvider = _projectsData;
+			}*/
+			public function addData(combo:ComboBox) : void{
+				var w:* = combo.parent.parent
+				combo.dataProvider = _projectsData;
+				
+			//	combo.addEventListener(ListEvent.CHANGE, updateProject, false, 0, true);
+			}
+			
+			public function updateFromCombo(e:IndexChangeEvent):void{
+				privateTable.actRenderer.data.id_project = e.target.selectedItem.id_project;
+				doubleEditHandler();
+			//	trace(e.target.selectedItem.id_project, privateTable.actRenderer);
+			}
+			
+		]]>
+	</fx:Script>	
+	
+	<fx:Style>
+		@namespace s "library://ns.adobe.com/flex/spark";
+		@namespace mx "library://ns.adobe.com/flex/mx";
+		@namespace containers "flexmdi.containers.*";
+		@namespace utils "components.utils.*";
+		
+		.def{
+			color: #999999;
+		}
+		.act{
+			color: #000000;
+		}
+		
+	</fx:Style>
+	
+	<utils:myDataGrid width="100%" dataProvider="{_projects}" context="{getContextMenu(privateTable)}"
+					  id="privateTable" mydoubleClickEnabled="{Globals.access.private_list_edit}"
+					  mydoubleClickEdit="{Globals.access.private_list_edit}" doubleEdit="doubleEditHandler(event)"
+					  parentObj="{this}"
+					  filter="true" bottom="40" top="0" left="0">
+		<utils:columns>
+			<mx:DataGridColumn id="proj" width="185" headerText="Проект" itemEditor="components.wins.tasktodo.project.renderers.ComboBoxItemRenderer" dataField="id_project_text">
+			<!--	<mx:itemEditor>
+					<fx:Component>						
+						<s:ComboBox labelField="name" initialize="outerDocument.addData(this)" />
+					</fx:Component>
+				</mx:itemEditor>-->
+			</mx:DataGridColumn>
+		<!--	<mx:DataGridColumn width="185" headerText="Проект" dataField="id_project_text"/>   -->        
+			<mx:DataGridColumn headerText="Адрес админ.части" dataField="url"/>           
+			<mx:DataGridColumn width="100" headerText="Логин" dataField="login"/>           
+			<mx:DataGridColumn width="100" headerText="Пароль" dataField="password"/>     
+		</utils:columns>
+		
+	</utils:myDataGrid>
+	<s:HGroup left="10" bottom="8" visible="{Globals.access.private_list_edit}">
+		<s:ComboBox labelField="name" id="id_project"  width="170"/>
+		<s:TextInput styleName="def" width="235" id="newProject_url" text="Адрес" focusIn="Func.placeHolderTextInputOnFocusIn(event, 'Адрес')"/>
+		<s:TextInput styleName="def" id="newProject_login" text="Логин" focusIn="Func.placeHolderTextInputOnFocusIn(event, 'Логин')" width="100"/>
+		<s:TextInput styleName="def" id="newProject_password" text="Пароль" focusIn="Func.placeHolderTextInputOnFocusIn(event, 'Пароль')" keyUp="onKeyUp(event)" width="100"/>
+		<s:Button label="Добавить" click="addProject()"/>
+	</s:HGroup>
+	
+</containers:MDIWindow>

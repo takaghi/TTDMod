@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<service id="message-service"
+    class="flex.messaging.services.MessageService"
+    messageTypes="flex.messaging.messages.AsyncMessage">
+
+    <destination id="ChatDestination">
+        <properties>
+        
+            <server>
+                <durable>false</durable>                
+            </server>
+            
+            <message-service-handler>Weborb.messaging.v3.MessagingServiceHandler</message-service-handler>
+            <message-storage-policy>Weborb.messaging.v3.MemoryStoragePolicy</message-storage-policy>
+            
+        </properties>
+
+        <channels>
+            <channel ref="my-polling-amf"/>			
+        </channels>         
+        
+    </destination>
+</service>

@@ -1,0 +1,196 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:TextInput xmlns:fx="http://ns.adobe.com/mxml/2009" 
+			 xmlns:s="library://ns.adobe.com/flex/spark" 
+			 xmlns:mx="library://ns.adobe.com/flex/mx" initialize="init()" creationComplete="init2()" text="">
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+	
+	
+	<fx:Script>
+		<![CDATA[
+			import classes.SharedManager;
+			
+			import components.utils.renderers.SugInputItemRenderer;
+			import mx.events.ItemClickEvent;
+
+			
+			import mx.collections.ArrayCollection;
+			import mx.events.ListEvent;
+			import mx.managers.PopUpManager;
+			
+			import spark.components.List;
+			
+			private var myData:Array = [];
+			private var tempData:Array = [];
+			private var list:List = new List();
+			private var index:int = 0;
+			private var show:Boolean = false;
+			
+			private var initFlag:Boolean = false;
+			
+			
+			
+			private function init():void{	
+				setData();
+				list.maxHeight = 200;
+				list.itemRenderer = new ClassFactory(components.utils.renderers.SugInputItemRenderer);
+				list.addEventListener(ItemClickEvent.ITEM_CLICK, onItemClick);
+
+				this.addEventListener(KeyboardEvent.KEY_UP, onKeyUp);
+				this.addEventListener(KeyboardEvent.KEY_DOWN, onKeyDown);
+				this.addEventListener(FocusEvent.FOCUS_OUT, onFocusOut);				
+			}
+	
+			private function init2():void{		
+				list.width = this.width;				
+			}
+			
+			private function setData():void{
+				trace("initData")
+				if(!initFlag && SharedManager.getObj(this.id)!=null){
+					myData = SharedManager.getObj(this.id) as Array;
+					initFlag = true;
+			//		SharedManager.clearObj(this.id)
+				}
+			}
+			
+			private function onKeyDown(e:KeyboardEvent):void{	
+				if(this.text.length == 0)
+					return;
+				if(e.keyCode == Keyboard.DOWN){
+					index++;
+					index = (index > tempData.length - 1) ? 0 : index;
+					changeIndex();
+				}					
+				else if(e.keyCode == Keyboard.UP){
+					index--;
+					index = (index < 0) ? tempData.length - 1 : index;	
+					changeIndex();
+				}					
+			}
+			
+			private function onItemClick(e:ItemClickEvent):void{
+				if(e.index >= 0){
+					this.text = tempData[e.index];
+					this.selectRange(tempData[e.index].length, tempData[e.index].length);
+				}
+				closeList();
+			}
+			
+			private function onKeyUp(e:KeyboardEvent):void{		
+				if(this.text.length == 0)
+					return;
+				if(e.keyCode == Keyboard.DOWN || e.keyCode == Keyboard.UP || e.keyCode == Keyboard.LEFT || e.keyCode == Keyboard.RIGHT){
+					return;
+				}else if(e.keyCode == Keyboard.ENTER){
+					onEneter();
+					return;
+				}			
+				testString();
+			}
+			
+			private function onEneter():void{
+				if(this.text.length == 0)
+					return;
+				if(tempData.length > 0){
+					this.text = tempData[index];
+					this.selectRange(this.text.length, this.text.length);
+				}else{
+					equal(this.text);
+				}
+				closeList();
+			}
+			
+			private function equal(txt:String):void{
+				var eq:Boolean = false;
+				
+				for(var i:int = 0; i < myData.length; i++){
+					var str:String = String(myData[i]).toLowerCase();
+					if (str == txt.toLowerCase()){		
+						eq = true;
+						break;
+					}
+				}
+				if(!eq && txt!=""){
+					myData.push(txt);
+					myData.sort();
+					SharedManager.setObj(this.id, myData);
+				}
+			}
+			
+			private function changeIndex():void{
+				list.selectedIndex = index;
+				this.text = tempData[index];
+				this.selectRange(tempData[index].length, tempData[index].length);
+				list.ensureIndexIsVisible(index);
+			}
+			
+			private function testString():void{
+				index = 0;
+				var txt:String = this.text;
+				if(txt==""){
+					closeList();
+					return;
+				}
+				tempData = [];
+				var pattern:RegExp = new RegExp(txt.toLowerCase(), "i");
+				for(var i:int = 0; i < myData.length; i++){
+					var str:String = myData[i] as String;
+					if (pattern.test(str.toLowerCase())){						
+						tempData.push(str);
+					}
+				}
+				if(tempData.length > 0){
+					showList();
+				}else{
+					noData();
+				}
+			}
+			
+			private function noData():void{
+		//		this.setStyle("contentBackgroundColor", 0x861414);
+		//		this.setStyle("color", 0xffffff);
+				closeList();
+			}
+			
+			private function showList():void{
+		//		this.setStyle("contentBackgroundColor", 0xffffff);
+		//		this.setStyle("color", 0x000000);
+				
+				list.dataProvider = new ArrayCollection(tempData);
+				callLater(function():void{list.selectedIndex = 0;})
+				
+				if(show)
+					return;
+				
+				var clickPoint:Point = new Point(this.x, y);				
+				list.x = this.parent.localToGlobal(clickPoint).x;
+				list.y = this.parent.localToGlobal(clickPoint).y + this.height;
+				
+				PopUpManager.addPopUp(list,DisplayObject(this.parent)); 
+				show = true;
+			}
+			
+			private function closeList(e:Event = null):void{
+				PopUpManager.removePopUp(list);
+				show = false;
+			}
+			
+			private function onFocusOut(e:FocusEvent):void{
+				closeList();
+				equal(this.text);
+			}
+			
+			public function set sugtext(value:String):void{
+				setData();
+				equal(value);
+			}
+			
+			
+		]]>
+	</fx:Script>
+	
+	
+	
+</s:TextInput>

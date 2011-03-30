@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<containers:MDIWindow xmlns:fx="http://ns.adobe.com/mxml/2009" 
+					  xmlns:s="library://ns.adobe.com/flex/spark" 
+					  xmlns:mx="library://ns.adobe.com/flex/mx"
+					  xmlns:containers="flexmdi.containers.*" close="saveSettings()" 
+					  title="Настройки"  layout="absolute" width="800" height="600" xmlns:utils="components.utils.*" initialize="init()">
+	<fx:Script>
+		<![CDATA[
+			import classes.SettingManager;
+			import classes.SharedManager;
+			
+			import mx.collections.ArrayCollection;
+			import mx.core.FlexGlobals;
+			import mx.events.FlexEvent;
+			import mx.utils.ObjectProxy;
+			
+
+
+			private function init():void{
+				//SharedManager.clearObj("settings")
+	/*			if(SharedManager.getObj("settings")!=null){	
+					nds_form.selected = SharedManager.getObj("settings").nds_form.visible;
+					private_tasks.selected = SharedManager.getObj("settings").private_tasks.visible;					
+				}
+	*/			
+				this.addElement(SettingManager.controller);
+				
+			}
+			
+			private function saveSettings():void{
+				SettingManager.update();
+			}			
+			
+		]]>
+	</fx:Script>
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+	<!--<utils:TitleGroup x="10" y="10" title="Настройка виджетов">
+		<s:VGroup width="100%" height="100%">
+			<s:CheckBox selected="true" id="nds_form" label="Отображать НДС" name="FlexGlobals.topLevelApplication.nds_form" change="update()"/>
+			<s:CheckBox selected="true" id="private_tasks" label="Отображать личные задачи" name="FlexGlobals.topLevelApplication.private_tasks" change="update()"/>			
+		</s:VGroup>		
+	</utils:TitleGroup>-->
+
+</containers:MDIWindow>

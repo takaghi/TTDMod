@@ -1,0 +1,340 @@
+<?xml version="1.0" encoding="utf-8"?>
+<containers:MDIWindow xmlns:fx="http://ns.adobe.com/mxml/2009" 
+					  xmlns:s="library://ns.adobe.com/flex/spark" 
+					  xmlns:mx="library://ns.adobe.com/flex/mx" 
+					  layout="absolute" width="100%" height="100%" 
+					  title="{'Задача: '+ _data.id_task}" initialize="init()" 
+					  xmlns:utils="components.utils.*" xmlns:containers="flexmdi.containers.*">
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+	
+
+	<fx:Script>
+		<![CDATA[
+			import classes.Remote;
+			import classes.WinManager;
+			
+			import components.utils.Func;
+			import components.wins.tasktodo.task.additions.TaskAction;
+			
+			import flashx.textLayout.conversion.TextConverter;
+			import flashx.textLayout.elements.TextFlow;
+			
+			import mx.controls.Alert;
+			import mx.controls.dataGridClasses.DataGridItemRenderer;
+			import mx.events.FlexEvent;
+			import mx.utils.ObjectProxy;
+			
+			[Bindable]
+			private var _data:ObjectProxy;
+			[Bindable]
+			private var task_dsc:TextFlow;
+						
+			private var actionMethod:String;
+			
+			private function init():void{
+				trace("init0")
+				/*for(var i:int=0; i<buttonsGroup.numElements; i++){					
+					buttonsGroup.getElementAt(i).addEventListener(FlexEvent.HIDE, hideButtons, false, 0, true);
+				}*/
+				
+				addContextMenu(comments);
+			}
+			private function addContextMenu(obj:Object):void{
+				obj.addEventListener(MouseEvent.CONTEXT_MENU, onRightClick);
+				obj.contextMenu = setContextMenu(obj);
+			}
+			
+			private function onRightClick(e:MouseEvent):void{	
+				if(e.target is Label){
+					return;
+				}
+				
+				var r:DataGridItemRenderer = e.target as DataGridItemRenderer;
+				
+				if(r == null)
+					return;
+				var selectedIndex:int = e.currentTarget.itemRendererToIndex(r); 
+				e.currentTarget.selectedIndex = selectedIndex;
+				e.currentTarget.setStyle("rollOverColor", undefined);				
+			}
+			
+			private function setContextMenu(par:Object):ContextMenu{	
+				var cm:ContextMenu = new ContextMenu();
+				
+								
+				//	var del:NativeMenuItem = new NativeMenuItem("Удалить");
+				//	del.addEventListener(Event.SELECT, function():void{delTaskQuest(data)})
+				var copy:NativeMenuItem = new NativeMenuItem("Копировать");
+				copy.addEventListener(Event.SELECT, function():void{copyTask(par)})
+							
+				var items:Array = [copy];
+							
+				cm.items = items;			
+				
+				return cm;
+			}
+			
+			private function copyTask(par:Object):void{
+				var item:Object = par.selectedItem;
+				System.setClipboard(item.dsc);
+			}
+			
+			private function hideButtons(e:FlexEvent):void{
+				Button(e.target).includeInLayout = false;
+				e.target.parent.removeElement(e.target)
+			}
+			
+			override public function set data(d:Object):void{
+				//this._data = d;
+				Remote.setRequest("Tasks", this, "getOne", null, d.id_task);	
+				//if(buttonsGroup)
+					
+			}
+			
+			override public function get data():Object{
+				return _data;				
+			}
+			
+			public function Tasks_getOneResult(result:Object):void{
+				if(result.data.length>0){
+					_data = new ObjectProxy(result.data[0]);
+					if(_data.comments.length > 0){
+						last_comment.text = _data.comments[0].dsc
+					}
+										
+					
+					if(Func.compareStrings(_data.name, _data.dsc)){
+						task_dsc = TextConverter.importToFlow(("<b>"+_data.name+"</b>"), TextConverter.TEXT_FIELD_HTML_FORMAT);
+					}else{
+						task_dsc = TextConverter.importToFlow(("<b>"+_data.name+'</b><br/>\n\n '+ Func.getHTML(_data.dsc)), TextConverter.TEXT_FIELD_HTML_FORMAT);
+					}
+					content_comments.label= "Комментарии ("+_data.comments.length+")";
+					content_statuses.label="Статусы ("+_data.sys_comments.length+")";
+					setFileList();
+		buttonsGroup.visible = Globals.access.task_show;
+		buttonsGroup.includeInLayout = Globals.access.task_show;
+				}else{
+					if(result.messages.length > 0){
+						Alert.show(Globals.errors["err"+result.messages[0].code], "Ошибка", Alert.OK);
+					}
+				}
+			}
+						
+			private function edit():void{
+				var winTitle:String = "";
+				winTitle = "Редактирование задачи: "+ _data.id_task;				
+				WinManager.close_open(this, "Task", _data, winTitle);
+			}
+			
+			private function action(e:MouseEvent):void{
+				actionMethod = e.currentTarget.id;
+				var ta:TaskAction = new TaskAction();
+				if(actionMethod=="redirectRealization")
+					ta.show(e.currentTarget.label, this, _data.id_staff_preferable);
+				else if(actionMethod=="redirectAccept")
+					ta.show(e.currentTarget.label, this, "redirectAccept");
+				else
+					ta.show(e.currentTarget.label, this);
+			}
+			public function actionDo(param:Object = null):void{
+				Remote.setRequest("Tasks", this, actionMethod, param, _data.id_task);
+			}
+			
+			public function Tasks_completeResult(res:Object):void{
+				if(res.data["complete"]){
+					WinManager.close_open(this);
+				}
+			}
+			public function Tasks_confirmCompleteResult(res:Object):void{
+				if(res.data["confirmComplete"]){
+					WinManager.close_open(this);
+				}
+			}
+			public function Tasks_cancelResult(res:Object):void{
+				if(res.data["cancel"]){
+					WinManager.close_open(this);
+				}
+			}
+			public function Tasks_confirmCancelResult(res:Object):void{
+				if(res.data["confirmCancel"]){
+					WinManager.close_open(this);
+				}
+			}
+			public function Tasks_incompleteResult(res:Object):void{
+				if(res.data["incomplete"]){
+					WinManager.close_open(this);
+				}
+			}
+			public function Tasks_deleteResult(res:Object):void{
+				if(res.data["delete"]){
+					WinManager.close_open(this);
+				}
+			}
+			public function Tasks_redirectRealizationResult(res:Object):void{
+				if(res.data["redirectRealization"]){
+					WinManager.close_open(this);
+				}
+			}
+			public function Tasks_redirectAcceptResult(res:Object):void{
+				if(res.data["redirectAccept"]){
+					WinManager.close_open(this);
+				}
+			}
+			
+			private function addComment():void{
+				Remote.setRequest("Tasks", this, "addComment", {comment:textCom_bounce.text}, _data.id_task);
+			}
+			public function Tasks_addCommentResult(res:Object):void{
+				if(res.data.add){
+					comments.dataProvider = res.data.comments;
+					content_comments.label="Комментарии ("+res.data.comments.length+")";
+					textCom_bounce.text = "";	
+				}
+			}
+			
+			private function setFileList():void{				
+				if(_data==null)
+					return;
+				
+				var files:Array = (String)(_data.links).split("]");
+				files.pop();
+				
+				content_files.label = "Файлы ("+files.length+")"
+				
+				for(var i:int=0; i < files.length; i++){
+					var ind:int = files[i].search(/\[/i);
+					var path:String = files[i].substring(0, ind);
+					var comment:String = files[i].substring(ind+1);
+					
+					fileList.addElement(Func.createFileList(path, comment));					
+				}
+			}
+			
+			private function initButtonsGroup():void{	
+		//		buttonsGroup.visible = false;
+				return;
+				for(var i:int=0; i<buttonsGroup.numElements; i++){					
+					buttonsGroup.getElementAt(i).visible = false;
+					buttonsGroup.getElementAt(i).includeInLayout = false;
+				}
+			}	
+
+			
+			private function colorDate(date:String):uint{
+				var cd:Date = Func.convertMySQLDateToActionscript(date);
+				var diff:int = Func.getDateDifference(cd);
+				if(diff < 0)
+					return 0xFF0000;
+				else if(diff > 0)				
+					return 0x17BD17;
+				
+				return 0x000000;
+			}
+
+		]]>
+	</fx:Script>
+	<mx:TabNavigator right="0" left="0" top="0" bottom="40" creationPolicy="all" borderVisible="true">
+		<s:NavigatorContent label="Описание" width="100%" height="100%">
+			<s:VGroup width="100%" height="100%" textAlign="center" horizontalAlign="center" y="0" gap="4">
+				<s:HGroup width="100%" verticalAlign="middle" paddingLeft="10" gap="2">
+					<s:Label text="Проект:"/>
+				<!--	<s:Label text="{_data.id_project_text}" fontWeight="bold" paddingRight="10"/>-->
+					<mx:LinkButton label="{_data.id_project_text}" textAlign="left" click="Func.openFile(_data.id_project_folder)" fontWeight="bold" paddingLeft="0" paddingRight="0"/>
+					<s:Label text="Статус:" verticalAlign="middle" paddingTop="2"/>
+					<s:Label text="{Globals.getVar(_data.status)}" verticalAlign="middle" paddingTop="2" fontWeight="bold"/>
+					<s:Label text="{Func.convertStringDate(_data.date_plan_start)}" color="{colorDate(_data.date_plan_start)}"  width="100%" textAlign="right" fontWeight="bold" paddingRight="10"/>
+				</s:HGroup>
+				<s:HGroup width="100%" verticalAlign="middle" paddingLeft="10" gap="2">
+					<s:Label text="Поставил:" verticalAlign="middle" paddingTop="2"/>
+					<s:Label text="{_data.id_staff_owner_text}" verticalAlign="middle" paddingTop="2" fontWeight="bold" paddingRight="10"/>
+					<s:Label text="Исполнитель:" verticalAlign="middle" paddingTop="2"/>
+					<s:Label text="{_data.id_staff_worker_text}" verticalAlign="middle" paddingTop="2" fontWeight="bold" paddingRight="10"/>
+					<s:Label text="Проверка:" verticalAlign="middle" paddingTop="2"/>
+					<s:Label text="{_data.id_staff_accepter_text}" verticalAlign="middle" paddingTop="2" fontWeight="bold"/>
+				</s:HGroup>
+				<utils:TitleGroup title="Описание задачи" width="100%" height="100%">
+					<s:TextArea textFlow="{task_dsc}"
+								borderVisible="false" editable="false"
+								textAlign="left" right="0" left="0" top="5" bottom="0"/>					
+				</utils:TitleGroup>
+				<s:VGroup id="fileLink" initialize="Func.initHide(event)" 
+						  visible="{_data.link_folder.length != '' || _data.link != ''}"
+						  includeInLayout="{_data.link_folder.length != '' || _data.link != ''}"
+						  width="100%">
+					<s:HGroup id="fileGroup" initialize="fileGroup.height=0"
+							  height="{(_data.link_folder != '')?NaN:0}"
+							  width="100%" verticalAlign="middle">
+						<s:Label text="Папка" verticalAlign="middle" paddingTop="2" width="50" textAlign="right"/>
+						<mx:LinkButton label="{_data.link_folder}" textAlign="left" click="Func.openFileLinkButton(event)" fontWeight="bold"/>
+					</s:HGroup>
+					<s:HGroup id="linkGroup" initialize="{linkGroup.height=0}"
+							  height="{(_data.link!='')?NaN:0}"
+							  width="100%" verticalAlign="middle">
+						<s:Label text="URL" verticalAlign="middle" paddingTop="2" width="50" textAlign="right"/>
+						<mx:LinkButton label="{_data.link}" textAlign="left" click="Func.openFileLinkButton(event)" fontWeight="bold"/>
+					</s:HGroup>					
+				</s:VGroup>
+				<utils:TitleGroup id="last_comment_group" title="Последний комментарий" 
+								  width="100%" height="40%" initialize="Func.initHide(event)" 
+								  visible="{_data.comments.length > 0}" includeInLayout="{_data.comments.length > 0}">
+					<s:TextArea editable="false" id="last_comment" textAlign="left" right="0" left="0" top="5" bottom="0"/>
+				</utils:TitleGroup>			
+			</s:VGroup>
+		</s:NavigatorContent>
+		<s:NavigatorContent id="content_files" label="Файлы" width="100%" height="100%">			
+			<s:VGroup id="fileList" left="10" right="10" bottom="70" top="10">
+				<s:HGroup width="100%" verticalAlign="middle" paddingTop="5">
+					<s:Label text="Файл/папка" width="50%" fontWeight="bold" fontSize="14" fontFamily="Arial"/>
+					<s:Label text="Комментарий" width="50%" fontSize="14" fontWeight="bold"/>
+				</s:HGroup>
+				<mx:HRule width="100%"/>
+			</s:VGroup>
+		</s:NavigatorContent>
+		<s:NavigatorContent id="content_comments" label="Комментарии" width="100%" height="100%">
+			<s:VGroup width="100%" height="100%" bottom="10">	
+				<mx:DataGrid id="comments" x="0" width="100%" top="0" bottom="200" dataProvider="{_data.comments}" 
+							 horizontalScrollPolicy="auto" variableRowHeight="true" wordWrap="true" rowHeight="24" height="100%">
+					<mx:columns>
+						<mx:DataGridColumn headerText="Время" dataField="date_add" width="130"/>
+						<mx:DataGridColumn headerText="Пользователь" dataField="id_staff_owner_text" width="140"/>
+						<mx:DataGridColumn headerText="Комментарий" dataField="dsc"/>
+					</mx:columns>
+				</mx:DataGrid>		
+				<utils:TitleGroup id="comGroup" width="100%" title="Добавить комментарий" height="182" maxBounceHeight="182" open="{textCom_bounce.setFocus()}" bounce="true" bottom="10" right="10" left="10">
+					<s:TextArea id="textCom_bounce" right="0" bottom="30" top="5" left="0" borderVisible="false" visible="{comGroup.bounceOpen}"/>
+					<s:Button id="addCom_bounce" label="Добавить" right="0" bottom="0" visible="{comGroup.bounceOpen}" click="addComment()"/>
+				</utils:TitleGroup>
+			</s:VGroup>
+		</s:NavigatorContent>
+		<s:NavigatorContent id="content_statuses" label="Статусы" width="100%" height="100%">
+			<mx:DataGrid id="statuses" x="0" width="100%" top="0" bottom="0" dataProvider="{_data.sys_comments}" 
+						 horizontalScrollPolicy="auto" variableRowHeight="true" wordWrap="true" rowHeight="24">
+				<mx:columns>
+					<mx:DataGridColumn headerText="Время" dataField="date_add" width="130"/>
+					<mx:DataGridColumn headerText="Пользователь" dataField="id_staff_owner_text" width="140"/>
+					<mx:DataGridColumn headerText="Текст" dataField="dsc"/>
+				</mx:columns>
+			</mx:DataGrid>
+		</s:NavigatorContent>
+	</mx:TabNavigator>
+	<s:HGroup right="0" top="0" gap="0" verticalAlign="middle" textAlign="right">
+		<s:Label id="priority" text="Срочная" initialize="{priority.visible=false}" visible="{_data.priority > 0}" includeInLayout="{_data.priority > 0}" width="80" height="22" textAlign="center" verticalAlign="middle" fontWeight="bold" color="#FFFFFF" backgroundColor="#FF00E0" paddingTop="2"/>
+		<s:Label id="urgency" text="Важная!" initialize="{urgency.visible=false}" visible="{ _data.urgency == 1}" includeInLayout="{ _data.urgency == 1}" width="80" textAlign="center" height="22" verticalAlign="middle" backgroundColor="#FF0000" color="#FFFFFF" fontWeight="bold" paddingTop="2"/>
+	</s:HGroup>
+	<s:HGroup bottom="10" left="10" id="buttonsGroup" visible="false" includeInLayout="false">
+		<s:Button id="complete" label="Выполнить" click="action(event)" includeInLayout="{complete.visible}" visible="{(_data.status_alias=='task_incomplete') &amp;&amp; (_data.id_staff_worker==Globals.id_staff)}"/>
+		<s:Button id="confirmComplete" label="Подтвердить" click="action(event)" includeInLayout="{confirmComplete.visible}" visible="{_data.status_alias=='task_complete' &amp;&amp; _data.id_staff_accepter==Globals.id_staff}"/>
+		<s:Button id="cancel" label="Невозможно" click="action(event)" includeInLayout="{cancel.visible}" visible="{_data.status_alias=='task_incomplete' &amp;&amp; _data.id_staff_worker==Globals.id_staff}"/>
+		<s:Button id="confirmCancel" label="Подтвердить" click="action(event)" includeInLayout="{confirmCancel.visible}" visible="{_data.status_alias=='task_cancel' &amp;&amp; _data.id_staff_accepter==Globals.id_staff}"/>
+		<s:Button id="incomplete" label="Вернуть" click="action(event)" includeInLayout="{incomplete.visible}" visible="{(_data.status_alias=='task_cancel' || _data.status_alias=='task_complete' || _data.status_alias=='task_finish') &amp;&amp; _data.id_staff_accepter==Globals.id_staff}"/>		
+		<s:Button id="redirectRealization" label="Пер-ть выполнение" click="action(event)" includeInLayout="{redirectRealization.visible}" visible="{Globals.access.task_redirect_realization}"/>
+		<s:Button id="redirectAccept" label="Пер-ть на проверку" click="action(event)" includeInLayout="{redirectAccept.visible}" visible="{_data.status_alias=='task_complete' &amp;&amp; _data.id_staff_accepter==Globals.id_staff}"/>
+		<s:Button id="editBut" label="Редактировать" click="edit()" includeInLayout="{editBut.visible}" visible="{(_data.id_staff_owner==Globals.id_staff &amp;&amp; Globals.access.task_edit) || Globals.access.task_edit}"/>
+		<s:Button id="delete" label="Удалить" click="action(event)" includeInLayout="{_data.id_staff_owner==Globals.id_staff}" visible="{_data.id_staff_owner==Globals.id_staff}"/>
+	</s:HGroup>
+	<s:HGroup right="10" bottom="10">
+		<s:Button label="Закрыть" click="{WinManager.close_open(this);}"/>
+	</s:HGroup>
+</containers:MDIWindow>

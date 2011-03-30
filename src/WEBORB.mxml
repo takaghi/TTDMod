@@ -1,0 +1,156 @@
+<?xml version="1.0" encoding="utf-8"?>
+<mx:WindowedApplication xmlns:fx="http://ns.adobe.com/mxml/2009" 
+					   xmlns:s="library://ns.adobe.com/flex/spark" 
+					   xmlns:mx="library://ns.adobe.com/flex/mx" 
+					   applicationComplete="init()"
+					   width="1000" height="650" 
+					   xmlns:com="flexmdi.containers.*" 
+					   showStatusBar="true" closing="handleExiting(event)"
+					   statusBarFactory="{new ClassFactory(myStatusBar)}" layout="absolute" xmlns:utils="components.utils.*" xmlns:widgets="widgets.*">
+	
+	<fx:Declarations>
+	</fx:Declarations>
+	
+	<fx:Script>
+		<![CDATA[
+			import air.net.URLMonitor;
+			import air.update.ApplicationUpdaterUI;
+			import air.update.events.UpdateEvent;
+			
+			import classes.StatusManager;
+			
+			import components.utils.myStatusBar;
+			
+			import mx.controls.Alert;
+
+
+			public var main:Main;
+			protected var monitor:URLMonitor;
+			private var appUpdater:ApplicationUpdaterUI = new ApplicationUpdaterUI();
+			[Bindable]
+			private var version:String;
+				
+			private function init():void{
+				checkUpdate();
+				new StatusManager(this);
+				StatusManager.setStatus(this,  "initialization...");
+				main = new Main();
+				
+				// Detecting online/offline network connectivity with a URLMonitor
+				//monitor = new URLMonitor(new URLRequest("http://192.168.0.64:271/WEBORB/WEBORB-debug/weborb.php")); // change URL to URL desired
+				monitor = new URLMonitor(new URLRequest("http://tasktodo.alkodesign.ru/WEBORB/weborb.php")); // change URL to URL desired
+				monitor.addEventListener(StatusEvent.STATUS, onStatusChange);
+				monitor.pollInterval = 20000;// Milliseconds
+				monitor.start();
+				
+		//		NativeApplication.nativeApplication.addEventListener(Event.EXITING,handleExiting);
+				NativeApplication.nativeApplication.idleThreshold = 900;
+				NativeApplication.nativeApplication.addEventListener(Event.USER_IDLE, onIdle);
+				NativeApplication.nativeApplication.addEventListener (Event.USER_PRESENT, onPresence);
+
+				
+				// Get notified whan a global error occurs
+				loaderInfo.uncaughtErrorEvents.addEventListener(UncaughtErrorEvent.UNCAUGHT_ERROR, errorHandler);
+				
+			/*	var file:File = File.applicationStorageDirectory;
+				file = file.resolvePath("Preferences/version.txt");
+				trace("Preferences file location: " + file.nativePath);
+				var stream:FileStream = new FileStream();
+				stream.open(file, FileMode.WRITE);
+				stream.writeUTFBytes("hello");
+				stream.close();*/
+				
+			}
+			
+			private function onIdle(e:Event):void{
+				trace("Ага, не работаем?....");
+				Globals.idleFactor = true;
+			}
+			private function onPresence(e:Event):void{
+				trace("работаем....")
+				Globals.idleFactor = false;
+			}
+			
+			// Handle Global Errors
+			protected function errorHandler(e:UncaughtErrorEvent):void{
+				e.preventDefault();
+				StatusManager.setStatus(this,  "UncaughtErrorEvent: "+e.error.toString());
+		//		Alert.show("An error has occurred and been caught by the global error handler: " + e.error.toString(), "Global Error Handler");
+			}
+			// Handles when the HTTP Network status has changed.
+			protected function onStatusChange(e:StatusEvent):void{
+				if (monitor.available) {
+					//Alert.show("Network is online");
+				} else {
+			//		Alert.show("Соединение потеряно :(");
+					StatusManager.setStatus(this,  "Соединение потеряно :(");
+				}
+			}
+			
+			protected function handleExiting(e:Event):void{
+				trace("dock");
+				stage.nativeWindow.visible = false;
+				e.preventDefault();
+				//main.exit();
+			}
+			
+			/**
+			 * This function is triggered when the application finished to load;
+			 * Here we initialize <code>appUpdater</code> and set some properties
+			 */ 
+			private function checkUpdate():void {
+				setApplicationVersion();
+				// we set the URL for the update.xml file 
+			//	appUpdater.updateURL = "http://192.168.0.99/ttdmod/update.xml";
+			//	appUpdater.updateURL = "http://tasktodo.alkohost.ru/update_client/update.xml";
+				appUpdater.updateURL = "http://tasktodo.alkodesign.ru/update/update.xml";
+				//we set the event handlers for INITIALIZED nad ERROR
+				appUpdater.addEventListener(UpdateEvent.INITIALIZED, onUpdate);
+				appUpdater.addEventListener(ErrorEvent.ERROR, onError);
+				//we can hide the dialog asking for permission for checking for a new update;
+				//if you want to see it just leave the default value (or set true).
+				appUpdater.isCheckForUpdateVisible = false;
+				//if isFileUpdateVisible is set to true, File Update, File No Update, 
+				//and File Error dialog boxes will be displayed
+				appUpdater.isFileUpdateVisible = false;
+				//if isInstallUpdateVisible is set to true, the dialog box for installing the update is visible
+				appUpdater.isInstallUpdateVisible = false;
+				//we initialize the updater
+				appUpdater.initialize();
+			}	
+			/**
+			 * Handler function triggered by the ApplicationUpdater.initialize;
+			 * The updater was initialized and it is ready to take commands 
+			 * (such as <code>checkNow()</code>
+			 * @param UpdateEvent 
+			 */ 
+			private function onUpdate(event:Event):void {
+				//start the process of checking for a new update and to install
+				appUpdater.checkNow();
+			}			 
+			/**
+			 * Handler function for error events triggered by the ApplicationUpdater.initialize
+			 * @param ErrorEvent 
+			 */ 
+			private function onError(event:ErrorEvent):void {
+				Alert.show(event.toString());
+			}			 
+			/**
+			 * A simple code just to read the current version of the application 
+			 * and display it in a label. 
+			 */ 
+			private function setApplicationVersion():void {
+				var appXML:XML = NativeApplication.nativeApplication.applicationDescriptor;
+				var ns:Namespace = appXML.namespace();
+				version = "версия " + appXML.ns::version;
+				myStatusBar.version = version;
+			}
+
+		]]>
+	</fx:Script>
+	<com:MDICanvas id="winContainer" visible="false" x="0" y="0" height="100%" width="100%" backgroundColor="#E6EAF8" backgroundAlpha="0.95">
+		<widgets:MainButtons id="mainButtons" x="10" y="10"/>
+		<widgets:NDS id="nds_form" right="10" top="10"/>
+		<widgets:PrivateTasks id="private_tasks" right="20" bottom="10" width="250" maxHeight="280"/>
+	</com:MDICanvas>
+</mx:WindowedApplication>

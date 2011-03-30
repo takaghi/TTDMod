@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Group xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		 xmlns:s="library://ns.adobe.com/flex/spark" 
+		 xmlns:mx="library://ns.adobe.com/flex/mx">
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+	
+	<fx:Script>
+		<![CDATA[
+			import classes.WinManager;
+			
+			import mx.utils.ObjectProxy;
+			
+			
+			[Bindable]
+			private var _data:Object;
+			
+			private var total:Number;
+			private var verify:Number;
+			
+			public function set data(d:Object):void{
+				if(d == null)
+					return;
+				
+				_data = new ObjectProxy(d);
+				
+				if(total!=(parseInt(_data.current)+parseInt(_data.overtime)) || true){
+					total = parseInt(_data.current)+parseInt(_data.overtime);
+					
+		//			total = Math.ceil(Math.random()*10);
+					
+					if(_data.current > 0){
+						list.label = "Список ("+total+")";
+						list.visible = Globals.access.task_show;
+					}else{
+						list.visible = false;
+					}
+				}
+				
+				if(verify!=_data.verification){
+					verify = _data.verification;
+					
+					if(_data.verification>0){
+						check.label = "На проверку ("+verify+")";
+						check.visible = Globals.access.task_show;
+					}else{
+						check.visible = false;
+						check.includeInLayout = false;
+					}
+				}
+				
+				if(add.visible != Globals.access.task_add)
+					add.visible = (Globals.access.task_add);
+			}
+			
+		]]>
+	</fx:Script>
+	
+	<s:Button id="list" x="10" y="10" label="Список" visible="false" fontWeight="bold" width="120" height="40" click="{WinManager.addWin('Tasks')}"/>
+	<s:Button id="add" x="10" y="57" label="Добавить" visible="false" fontWeight="bold" width="120" height="40" click="{WinManager.addWin('Task')}"/>
+	<s:Button id="check" x="10" y="105" label="На проверку" visible="false" fontWeight="bold" width="120" height="40" click="{WinManager.addWin('Tasks',null,'',680,480,'openTab',['content_confirm'])}"/>
+</s:Group>

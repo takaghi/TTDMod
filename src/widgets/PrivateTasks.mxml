@@ -1,0 +1,130 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Group xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		 xmlns:s="library://ns.adobe.com/flex/spark" preinitialize="preInit()" show="update()"
+		 xmlns:mx="library://ns.adobe.com/flex/mx" width="400" maxHeight="400" focusOut="onFocusOut()" initialize="init()">
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+	
+	<fx:Script>
+		<![CDATA[
+			import classes.Remote;
+			import classes.SettingManager;
+			import classes.WinManager;
+			
+			import components.utils.Func;
+			
+			import mx.collections.ArrayCollection;
+			import mx.controls.dataGridClasses.DataGridItemRenderer;
+			import mx.events.FlexEvent;
+			import mx.events.ListEvent;
+			
+			
+			private var notasks:Boolean = false;
+			
+			
+			private function preInit():void{
+				SettingManager.initComponent(this);
+				this.removeEventListener(FlexEvent.PREINITIALIZE, preInit);
+			}
+			
+			private function init():void{
+				private_tasks.addEventListener(ListEvent.ITEM_DOUBLE_CLICK, openTask, false, 0, true);
+				private_tasks.addEventListener(MouseEvent.CONTEXT_MENU, onRightClick, false, 0, true);
+				private_tasks.contextMenu = setContextMenu(private_tasks);
+			}
+			
+			public function update():void{
+				if((this.visible && Globals.id_staff!="") || notasks)
+					Remote.setRequest("PrivateTask", this, "getList"); 
+			}
+			public function PrivateTask_getListResult(result:Object):void{
+				var res:Array = result.data as Array;
+				if(res.length==0){
+					notasks = true;
+					this.visible = false;
+					return;
+				}
+				if(notasks)
+					this.visible = true;
+				
+				notasks = false;
+				private_tasks.dataProvider = new ArrayCollection(res);
+				
+				if(this.maxHeight >= private_tasks.measureHeightOfItems(0, private_tasks.dataProvider.length) + private_tasks.headerHeight)
+					this.height = private_tasks.measureHeightOfItems(0, private_tasks.dataProvider.length) + private_tasks.headerHeight;
+				
+				//this.visible = true;
+			}
+			
+			private function openTask(e:Event):void{
+				var item:Object = private_tasks.selectedItem;
+				if(!item)
+					return;
+				var winTitle:String;
+				winTitle = "Задача: " + item.id_private_task;
+				WinManager.addWin("PrivateTaskCard", item, winTitle);
+			}
+			
+			protected function addTask(e:Event):void{
+					var winTitle:String;
+					winTitle = "Добавление задачи";
+					WinManager.addWin("PrivateTask", null, winTitle);
+			}
+			private function editTask(e:Event):void{
+				var item:Object = private_tasks.selectedItem;
+				var winTitle:String;
+				winTitle = "Редактирование задачи: " + item.id_private_task;
+				WinManager.addWin("PrivateTask", item, winTitle);
+			}
+			
+			private function setContextMenu(par:Object):ContextMenu{	
+				var cm:ContextMenu = new ContextMenu();
+				//var t1:NativeMenuItem = new NativeMenuItem(data.nick);
+				var show:NativeMenuItem = new NativeMenuItem("Просмотр");
+				show.addEventListener(Event.SELECT, openTask);
+				//	var ok:NativeMenuItem = new NativeMenuItem("Подтвердить");
+				//	ok.addEventListener(Event.SELECT, function():void{okTask(data)})				
+				var edit:NativeMenuItem = new NativeMenuItem("Редактировать");
+				edit.addEventListener(Event.SELECT, editTask);
+				
+				
+				var add:NativeMenuItem = new NativeMenuItem("Новая задача");
+				add.addEventListener(Event.SELECT, addTask)
+
+				var items:Array = [];
+							
+				items.push(show);
+				items.push(edit);
+				items.push(Func.getMenuSeparator());
+				items.push(add);
+				
+				cm.items = items;				
+				
+				return cm;
+			}
+			
+			private function onRightClick(e:MouseEvent):void{
+			
+				var r:DataGridItemRenderer = e.target as DataGridItemRenderer;		
+				if(r == null)
+					return;
+				var selectedIndex:int = e.currentTarget.itemRendererToIndex(r); 
+				e.currentTarget.selectedIndex = selectedIndex;
+				e.currentTarget.setStyle("rollOverColor", undefined);				
+			}
+			
+
+			protected function onFocusOut():void{
+				private_tasks.selectedIndex = -1;
+			}
+
+		]]>
+	</fx:Script>
+	
+	<mx:DataGrid id="private_tasks" showHeaders="false" doubleClickEnabled="true" variableRowHeight="true" wordWrap="true" labelField="name" x="0" y="0" width="100%" height="100%">
+		<mx:columns>
+			<mx:DataGridColumn dataField="name" />
+		</mx:columns>
+	</mx:DataGrid>
+</s:Group>

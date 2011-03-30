@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:HGroup xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		 xmlns:s="library://ns.adobe.com/flex/spark" 
+		 xmlns:mx="library://ns.adobe.com/flex/mx"
+		 gap="0" verticalAlign="middle" height="22" creationComplete="init()">
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+	
+	<fx:Script>
+		<![CDATA[
+			import flashx.textLayout.operations.InsertTextOperation;
+			
+			import spark.events.TextOperationEvent;
+			
+			private function init():void{
+				hours.addEventListener(FocusEvent.FOCUS_IN, onFocus);
+				minutes.addEventListener(FocusEvent.FOCUS_IN, onFocus);
+				hours.addEventListener(KeyboardEvent.KEY_UP, onKeyUp);
+				minutes.addEventListener(KeyboardEvent.KEY_UP, onKeyUp);
+				
+				hours.maxChars = minutes.maxChars = 2;
+				hours.restrict = minutes.restrict = "0-9";
+			}
+			
+			private function onFocus(e:FocusEvent):void{
+				TextInput(e.currentTarget).text = "";
+			}			
+						
+			private function onKeyUp(e:KeyboardEvent):void{
+				var ti:TextInput = e.currentTarget as TextInput;
+				if(ti.id == "hours" && ti.text.length == 2 && parseInt(ti.text)<=24){
+					minutes.setFocus();
+				}
+			}			
+
+			private function onChanging(e:TextOperationEvent):void{
+				var ti:TextInput = e.currentTarget as TextInput;
+				if(ti.id == "hours" && ti.text == "" && parseInt(InsertTextOperation(e.operation).text)>2){
+					e.preventDefault();
+					return;
+				}
+				if(ti.id == "minutes" && ti.text == "" && parseInt(InsertTextOperation(e.operation).text)>5){
+					e.preventDefault();
+					return;
+				}
+			}
+			
+
+			
+			public function get time():String{
+				return hours.text+":"+minutes.text;
+			}
+			
+			public function set time(t:String):void{
+				hours.text = t.substr(0, 2);
+				minutes.text = t.substr(3, 2);
+			}
+
+		]]>
+	</fx:Script>
+	
+	<s:TextInput text="" changing="onChanging(event)" id="hours" width="22" paddingRight="0" paddingLeft="5"/>
+	<s:Label text=":"/>
+	<s:TextInput text="" changing="onChanging(event)" id="minutes" width="22" paddingLeft="3" paddingRight="5"/>
+</s:HGroup>

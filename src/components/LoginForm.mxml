@@ -1,0 +1,196 @@
+<?xml version="1.0" encoding="utf-8"?>
+<mx:Canvas xmlns:s="library://ns.adobe.com/flex/spark" 
+		   preinitialize="preInit()" initialize="init()"
+		   width="158" height="154" dropShadowVisible="false" xmlns:mx="http://www.adobe.com/2006/mxml">
+
+	<mx:Script>
+		<![CDATA[
+			import classes.Remote;
+			import classes.SettingManager;
+			import classes.SharedManager;
+			import classes.StatusManager;
+			
+			import mx.controls.Label;
+			import mx.core.FlexGlobals;
+			import mx.events.FlexEvent;
+			import mx.managers.PopUpManager;
+			
+			private var Appl:Object = FlexGlobals.topLevelApplication;
+			
+			private var hello:Label = new Label();
+						
+			private  function init():void{
+	//			logMeIn();
+			}
+			
+			
+			private function logMeIn():void{
+				login_f.text = "krutov";
+				password_f.text = "123";
+				login();
+			}
+
+				
+			private function login():void{
+				Globals.endpoint = endpoint.selectedItem.url;
+				if(login_f.text=="" || password_f.text=="" || login_f.text=="Логин" || password_f.text=="Пароль"){
+					return;
+				}
+				var param:Object = {login:login_f.text, password:password_f.text};
+				Remote.login(this, param);
+			}
+			
+			public function getLoginResult(result:Object):void{					
+				if(!result.data){
+					err.visible = true;
+					StatusManager.setStatus(this, "Ошибка авторизации");
+					return;
+				}
+				else{
+					Appl.main.setUser(result.data.token, result.data.id_staff, result.data.access);
+		
+					hello.text = getGreetings() + result.data.name_first;
+					err.visible = false;
+					StatusManager.setStatus(this, "Вход в систему, "+result.data.name_first);
+					
+					if(remember.selected){
+						SharedManager.setObj("auth", {login:login_f.text, password:password_f.text});	
+					}else{
+						SharedManager.clearObj("auth");
+					}
+				}
+				close();
+				
+				this.setStyle("modalTrasparancy",0.1); 
+				this.setStyle("modalTransparencyBlur",2); 
+				this.setStyle("modalTransparencyColor",0x444444); 
+				this.setStyle("modalTransparencyDuration",45); 				
+				
+				hello.setStyle("fontWeight","bold");
+				hello.setStyle("fontSize", 20);
+				hello.setStyle("fontFamily", "Tahoma");
+				hello.setStyle("color", 0x000000);
+				hello.setStyle("textAlign", "center");
+				hello.width = 800;
+				
+				PopUpManager.addPopUp(hello,DisplayObject(Appl),true); 
+				PopUpManager.centerPopUp(hello);
+				
+				setTimeout(function():void{
+					closeHello();
+					//Appl.main.setView(null, "allTasksView");                	
+				}, 1500)
+			}
+           
+			private function getGreetings():String{
+				var h:Number = new Date().hours;
+				if(h > 7 && h < 12)
+					return "Доброе утро, ";
+				if(h >= 12 && h < 17)
+					return "Добрый день, ";
+				if(h >= 17 && h <= 23)
+					return "Добрый вечер, ";
+				return "И чего тебе не спится, ";
+			}
+            
+            public function show():void{	
+				StatusManager.setStatus(this, "Авторизация...");
+				this.setStyle("modalTrasparancy",0.1); 
+				this.setStyle("modalTransparencyBlur",2); 
+				this.setStyle("modalTransparencyColor",0x888888); 
+				this.setStyle("modalTransparencyDuration",45); 
+				
+				PopUpManager.addPopUp(this,DisplayObject(Appl),true); 
+				PopUpManager.centerPopUp(this);
+			
+
+			}
+			public function close():void{
+				this.setStyle("modalTransparencyDuration",100);
+				PopUpManager.removePopUp(this);
+			}
+			private function closeHello():void{
+				this.setStyle("modalTransparencyDuration",100);
+				PopUpManager.removePopUp(hello);
+			}
+			
+			//////////////////////////
+			private function onFocusIn(e:FocusEvent):void{
+				var t:TextInput = e.currentTarget as TextInput;
+				if(t.text=="Логин" || t.text=="Пароль"){
+					t.text = "";
+				}
+				if(t.name == "password_f")
+					t.displayAsPassword = true;
+				t.styleName = "act";
+			}
+			private function onFocusOut(e:FocusEvent):void{
+				var t:TextInput = e.currentTarget as TextInput;
+				if(t.text==""){
+					if(t.name == "login_f")
+						t.text = "Логин";
+					else
+						t.text = "Пароль";
+					t.styleName = "def";
+					if(t.name == "password_f")
+						t.displayAsPassword = false;
+				}			
+			}
+			private function onKeyUp(e:KeyboardEvent):void{
+				if(e.keyCode == 13){
+					login();
+				}
+			}
+			
+			private function testAutoAuth():void{
+				if(SharedManager.getObj("auth")!=null){	
+					password_f.displayAsPassword = true;
+					login_f.text = SharedManager.getObj("auth").login;
+					password_f.text = SharedManager.getObj("auth").password;					
+				}
+			}
+			private function setAuthStyle():void{
+				if(SharedManager.getObj("auth")!=null){	
+					login_f.styleName = "act";
+					password_f.styleName = "act";
+					remember.selected = true;
+				}else{
+					login_f.styleName = "def";
+					password_f.styleName = "def";
+				}
+			}
+			
+			
+			private function preInit():void{
+				SettingManager.initComponent(this);
+				this.removeEventListener(FlexEvent.PREINITIALIZE, preInit);
+			}
+		]]>
+	</mx:Script>
+	
+	<mx:Style>
+		.def{
+			color: #999999;
+			fontSize: 13;
+		}
+		.act{
+			color: #000000;
+			fontSize: 13;
+		}
+		
+	</mx:Style>
+
+	<mx:Button y="90" label="Вход" click="login()" fontSize="13" buttonMode="true" color="#000000" left="10"/>
+	<s:DropDownList id="endpoint" width="138" y="120" x="10" selectedIndex="0">
+		<s:ArrayCollection>
+			<mx:Object label="alkodesign.ru" url="http://tasktodo.alkodesign.ru/WEBORB/weborb.php" />
+			<mx:Object label="alkohost.ru" url="http://tasktodo.alkohost.ru/WEBORB/weborb.php" />
+		</s:ArrayCollection>
+	</s:DropDownList>
+	<mx:Canvas creationComplete="testAutoAuth()" initialize="setAuthStyle()">
+		<mx:TextInput y="9" width="136" id="login_f" text="Логин" focusIn="onFocusIn(event)" focusOut="onFocusOut(event)" keyUp="onKeyUp(event)" left="10"/>
+		<mx:TextInput y="38" width="136" id="password_f" displayAsPassword="false" text="Пароль" focusIn="onFocusIn(event)" focusOut="onFocusOut(event)" keyUp="onKeyUp(event)" left="10"/>	
+		<mx:CheckBox id="remember" y="67" label="Запомнить" left="10"/>
+	</mx:Canvas>
+	<mx:Label id="err" visible="false" y="114" text="Ошибка авторизации" width="135" height="21" fontSize="11" color="#EC1919" left="10"/>	
+</mx:Canvas>

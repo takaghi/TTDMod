@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="utf-8"?>
+<mx:Canvas xmlns:mx="http://www.adobe.com/2006/mxml" creationComplete="init()" 
+		   width="226" height="120" borderVisible="true" xmlns:s="library://ns.adobe.com/flex/spark" 
+		   backgroundAlpha="0.9" backgroundColor="#D4D0C8" implements="components.utils.interfaces.INotifyForm" xmlns:utils="components.utils.*">
+
+	<mx:Script>
+		<![CDATA[
+			import components.utils.interfaces.INotifyForm;
+			
+			import mx.utils.ObjectProxy;
+			
+			private var colors:Array = ["#f9a7a7", "#EE6161", "#adf9a7", "#a7c2f9"];
+			
+			[Bindable]
+			private var _data:ObjectProxy;
+				
+				
+			private function init():void{
+				trace("initNotify")
+			}
+			
+			override public function set data(d:Object):void{
+				_data = new ObjectProxy(d);
+			/*	if(_data.status == 5)
+					this.setStyle("backgroundColor", 0xADEF42);
+				else
+					this.setStyle("backgroundColor", colors[_data.priority]); */
+				eventType.setStyle("backgroundColor", setColors(_data)); 
+			}
+			
+			private function setColors(d:Object):uint{
+				if(d.status_alias=="task_complete" || d.status_alias=="task_finish" || d.status_alias=="task_impossible"){
+					return Globals.taskStatusColors[d.status_alias];
+				}else if(d.urgency==1 && d.priority==0){
+					return Globals.taskPriorityColors["urgency"];
+				}else if(d.urgency==0 && d.priority==1){
+					return Globals.taskPriorityColors["priority"];					
+				}else if(d.urgency==1 && d.priority==1){
+					return Globals.taskPriorityColors["all"];
+				}else{
+					return Globals.taskPriorityColors["normal"];
+				}
+			}	
+
+		]]>
+	</mx:Script>
+	
+	<s:BorderContainer width="100%" height="100%" borderColor="#333333" backgroundColor="#D4D0C8">
+	
+
+	<mx:Text selectable="false" x="10" y="23" width="208" height="58" id="dsc_f" text="{_data.name}" fontSize="11"/>	
+	<mx:HRule y="21" width="100%" height="1" strokeColor="#000000" horizontalCenter="0"/>
+	<mx:Canvas y="0" width="100%" height="21" id="eventType">
+		<mx:Label y="0" text="{_data.event_type}" width="100%" textAlign="center" height="21" paddingTop="2"/>
+	</mx:Canvas>
+	<mx:HRule y="83" width="100%" height="1" strokeColor="#000000" horizontalCenter="0"/>
+	<mx:HBox y="84.5" width="100%" x="0" paddingLeft="10" height="35" paddingTop="5">
+		<utils:UserDropDownList selectedIndex="0" prompt="Отложить на" id="time" width="126">
+			<mx:ArrayCollection>				
+				<mx:Object id="d1" value="3600" label="1 час"/>
+				<mx:Object id="d2" value="86400" label="1 сутки"/>
+				<mx:Object id="d3" value="172800" label="2 дня"/>
+				<mx:Object id="d4" value="604800" label="1 неделя"/>
+			</mx:ArrayCollection>
+		</utils:UserDropDownList>
+		<mx:Button id="ok" label="OK"/>
+	</mx:HBox>
+		
+	</s:BorderContainer>
+</mx:Canvas>

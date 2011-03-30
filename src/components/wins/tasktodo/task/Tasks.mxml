@@ -1,0 +1,440 @@
+<?xml version="1.0" encoding="utf-8"?>
+<containers:MDIWindow xmlns:fx="http://ns.adobe.com/mxml/2009" 
+					  xmlns:s="library://ns.adobe.com/flex/spark" 
+					  xmlns:mx="library://ns.adobe.com/flex/mx" 
+					  xmlns:containers="flexmdi.containers.*" layout="absolute" preinitialize="preInit()" 
+					  initialize="init()" refresh="refreshHandler()" refreshAllow="true" 
+					  title="Задачи" xmlns:utils="components.utils.*" minWidth="832">
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+
+	<fx:Script>
+		<![CDATA[
+			import classes.Remote;
+			import classes.SettingManager;
+			import classes.TaskOperator;
+			import classes.WinManager;
+			
+			import components.utils.Func;
+			import components.utils.HTMLToolTip;
+			import components.utils.renderers.ADGdateRenderer;
+			
+			import mx.collections.ArrayCollection;
+			import mx.collections.HierarchicalData;
+			import mx.controls.Alert;
+			import mx.controls.advancedDataGridClasses.AdvancedDataGridItemRenderer;
+			import mx.controls.dataGridClasses.DataGridItemRenderer;
+			import mx.events.FlexEvent;
+			import mx.events.ListEvent;
+			import mx.managers.ToolTipManager;
+			
+			import spark.components.Label;
+			
+			private var taskOperator:TaskOperator;
+			
+			[Bindable]
+			private var _projects:ArrayCollection;
+			[Bindable]
+			private var _users:ArrayCollection;
+			
+			private var tasks:Array/* = [
+				{ date: '10.09 Просрочено на 3 дня',
+					children: [
+						{   num: 1,
+							project: 2236765,
+							name: 886053,
+							status: 'TO'
+						},
+						{ 	num: 2,
+							project: 183869,
+							name: 75317,
+							status: 'VC'
+						},
+						{ 	num: 3,
+							population: 334614,
+							family: 130363,
+							code: 'NO' }
+					]}];*/
+			private function init():void{
+				addContextMenu(tasksTable);
+				addContextMenu(taskConfirmTable);
+				addContextMenu(taskCancelTable);
+				
+				getTasks({id_staff_worker:Globals.id_staff});				
+				getTasksConfirm();
+				getTasksCancel();
+				getTasksRedirect({id_staff_worker:Globals.id_staff});
+				
+				getProjects();
+				getUsers();
+
+				ToolTipManager.toolTipClass = HTMLToolTip;
+				
+				this.removeEventListener(FlexEvent.INITIALIZE, init);
+			}
+			private function addContextMenu(obj:Object):void{
+				obj.addEventListener(MouseEvent.CONTEXT_MENU, onRightClick, false, 0, true);
+				obj.contextMenu = setContextMenu(obj);
+			}
+			
+			private function getTasks(param:Object = null):void{
+				Remote.setRequest("Tasks", this, "getList", param); 
+			}
+			public function Tasks_getListResult(result:Object):void{
+				var res:Array = result.data as Array;
+				if(res.length==0){
+					tasksTable.dataProvider = new ArrayCollection(res);
+				//	Alert.show( "Задач нет, сообщение руководителю отправлено", ":)" );
+					return;
+				}
+				content_tasks.label = "Не выполненные ("+res.length+")";
+				taskOperator = new TaskOperator(res, false);
+				tasks = taskOperator.getTasks();	
+				tasksTable.dataProvider = new HierarchicalData(tasks);
+				callLater(function():void{tasksTable.expandAll();});
+			}
+			
+			private function getTasksConfirm(param:Object = null):void{
+				Remote.setRequest("Tasks", this, "getConfirmList", param);
+			}
+			public function Tasks_getConfirmListResult(result:Object):void{
+				var res:Array = result.data as Array;
+				if(res.length==0){
+					//return;
+				//	content_confirm.enabled = false;
+				//	allTabs.getTabAt(allTabs.getItemIndex(content_confirm)).includeInLayout = false;
+				//	allTabs.getTabAt(allTabs.getItemIndex(content_confirm)).visible = false;
+					
+				}
+				taskConfirmTable.dataProvider = new ArrayCollection(res);
+			//	taskConfirmTable.horizontalScrollPolicy = "off";
+				content_confirm.label = "На подтверждение ("+taskConfirmTable.dataProvider.length+")"
+			}
+			
+			private function getTasksCancel(param:Object = null):void{
+				Remote.setRequest("Tasks", this, "getCancelList", param);
+			}
+			public function Tasks_getCancelListResult(result:Object):void{
+				var res:Array = result.data as Array;
+				if(res.length==0){
+					//return;
+				}
+				taskCancelTable.dataProvider = new ArrayCollection(res);
+				//	taskConfirmTable.horizontalScrollPolicy = "off";
+				content_cancel.label = "Невозможно выполнить ("+taskCancelTable.dataProvider.length+")"
+			}
+			
+			private function getTasksRedirect(param:Object = null):void{
+				Remote.setRequest("Tasks", this, "getRedirectList", param); 
+			}
+			public function Tasks_getRedirectListResult(result:Object):void{
+				var res:Array = result.data as Array;
+				if(res.length==0){
+			//		content_redirect.enabled = false;
+				}
+				taskRedirectTable.dataProvider = new ArrayCollection(res);
+				taskRedirectTable.horizontalScrollPolicy = "off";				
+				content_redirect.label = "Перенаправление ("+taskRedirectTable.dataProvider.length+")"
+			}
+		
+			
+			private function getProjects(param:Object = null):void{
+				Remote.setRequest("Projects", this, "getLiteList",  param);
+			}
+			public function Projects_getLiteListResult(result:Object):void{
+				var res:Array = result.data as Array;
+				_projects = new ArrayCollection(res);
+			}			
+			
+			private function getUsers():void{
+				Remote.setRequest("Users", this, "getLiteList");
+			}
+			public function Users_getLiteListResult(result:Object):void{
+				var res:Array = result.data as Array;
+				_users = new ArrayCollection(res);
+				addContextMenu(taskRedirectTable);
+			}
+
+			protected function myADG_itemClickHandler(event:ListEvent):void{
+				var item:Object = AdvancedDataGrid(event.currentTarget).selectedItem;
+				event.target.expandItem(item, !event.target.isItemOpen(item), true);
+			}
+			
+			private function setContextMenu(par:Object):ContextMenu{	
+				var cm:ContextMenu = new ContextMenu();
+				//var t1:NativeMenuItem = new NativeMenuItem(data.nick);
+				var show:NativeMenuItem = new NativeMenuItem("Просмотр");
+				show.addEventListener(Event.SELECT, function():void{showTask(par)});
+			//	var ok:NativeMenuItem = new NativeMenuItem("Подтвердить");
+			//	ok.addEventListener(Event.SELECT, function():void{okTask(data)})				
+				var edit:NativeMenuItem = new NativeMenuItem("Редактировать");
+				edit.addEventListener(Event.SELECT, function():void{editTask(par)});
+				
+				
+				var confirm:NativeMenuItem;
+				if(par == taskConfirmTable){
+					confirm = new NativeMenuItem("Подтвердить");
+					confirm.addEventListener(Event.SELECT, function():void{confirmTask(par)});					
+				}
+				
+				
+				var redirect:NativeMenuItem;
+				var redirect2:NativeMenuItem;
+				if(par == taskRedirectTable){
+					redirect = new NativeMenuItem("Перенаправить");
+					redirect.addEventListener(Event.SELECT, function():void{redirectTo()});
+					redirect2 = new NativeMenuItem("Перенаправить на");
+					redirect2.submenu = new NativeMenu();
+					for(var i:int=0; i<_users.length; i++){
+					//	var id_user:String = _users.getItemAt(i).id_staff;
+						var user:NativeMenuItem = new NativeMenuItem(_users.getItemAt(i).name_second);
+						addListener(user, i);
+					//	user.addEventListener(Event.SELECT, function():void{redirectTo(id_user)});
+						redirect2.submenu.addItem(user);
+					}
+				}
+				function addListener(item:NativeMenuItem, i:int):void{
+					item.addEventListener(Event.SELECT, function():void{redirectTo(_users.getItemAt(i).id_staff)});
+				}
+				
+				
+			//	var del:NativeMenuItem = new NativeMenuItem("Удалить");
+			//	del.addEventListener(Event.SELECT, function():void{delTaskQuest(data)})
+				var copy:NativeMenuItem = new NativeMenuItem("Копировать");
+				copy.addEventListener(Event.SELECT, function():void{copyTask(par)})
+				var add:NativeMenuItem = new NativeMenuItem("Новая задача");
+				add.addEventListener(Event.SELECT, function():void{addTask()})
+			//	var cal:NativeMenuItem = new NativeMenuItem("Календарь");
+			//	cal.addEventListener(Event.SELECT, function():void{addTask()})
+			//	cm.items = [show, ok, edit, del, sep, copy, sep2, add, cal];
+			//	cm.items = [show, edit, sep, copy, sep2, add, cal];
+				
+				var items:Array = [];
+				if(redirect != null && Globals.access.task_redirect_realization){					
+					items.push(redirect);
+					items.push(redirect2);
+					items.push(Func.getMenuSeparator());
+				}
+				if(confirm != null){					
+					items.push(confirm);
+					items.push(Func.getMenuSeparator());
+				}
+				if(Globals.access.task_show)
+					items.push(show);
+				if(Globals.access.task_edit)
+					items.push(edit);
+
+				items.push(Func.getMenuSeparator());
+				items.push(copy);
+				items.push(Func.getMenuSeparator());
+				if(Globals.access.task_add)
+					items.push(add);
+			//	items.push(cal);
+				
+				cm.items = items;
+				
+				
+				return cm;
+			}
+
+			private function showTask(par:Object):void{
+				var item:Object = par.selectedItem;
+				if(!item)
+					return;
+				var winTitle:String;
+				winTitle = "Задача: " + item.id_task;
+				WinManager.addWin("TaskCard", item, winTitle);
+			}	
+			
+			private function confirmTask(par:Object):void{
+				var item:Object = par.selectedItem;
+				Remote.setRequest("Tasks", this, "confirmComplete", null, item.id_task);
+			}	
+			public function Tasks_confirmCompleteResult(res:Object):void{
+				getTasksConfirm();
+			}
+			
+			private function editTask(par:Object):void{
+				var item:Object = par.selectedItem;
+				var winTitle:String;
+				winTitle = "Редактирование задачи: " + item.id_task;
+				WinManager.addWin("Task", item, winTitle);
+			}
+
+			private function addTask():void{
+				var winTitle:String;
+				winTitle = "Добавление задачи";
+				WinManager.addWin("Task", null, winTitle);
+			}
+			
+			private function copyTask(par:Object):void{
+				var item:Object = par.selectedItem;
+				System.setClipboard(item.id_project_text+": "+item.name);
+			}
+			
+			private function redirectTo(id_user:String = ""):void{				
+				if(taskRedirectTable.selectedIndex >= 0)
+					var id_task:String = taskRedirectTable.selectedItem.id_task;
+
+				var param:Object = {id_staff_worker:id_user};
+				Remote.setRequest("Tasks", this, "redirectRealization", param, id_task)
+			}
+			public function Tasks_redirectRealizationResult(result:Object):void{
+				if(result.data){
+					getTasksRedirect({id_staff_worker:Globals.id_staff});
+				}
+			}
+			
+			private function onRightClick(e:MouseEvent):void{	
+				if(e.target is Label){
+					return;
+				}
+				
+				var r:*;
+				if(getQualifiedClassName(e.currentTarget)=="mx.controls::AdvancedDataGrid")
+					r = e.target as AdvancedDataGridItemRenderer; 
+				else
+					r = e.target as DataGridItemRenderer;
+					
+				if(r == null)
+					return;
+				var selectedIndex:int = e.currentTarget.itemRendererToIndex(r); 
+				e.currentTarget.selectedIndex = selectedIndex;
+				e.currentTarget.setStyle("rollOverColor", undefined);				
+			}
+			
+			private function showTooltip(item:Object):String{
+				var tip:String = "";
+				if(!item.hasOwnProperty("dsc"))
+					return "";
+				if(item != null){
+					tip = item.dsc;
+				}
+				return tip;
+			}
+
+			private function onItemDoubleClick(event:ListEvent):void{
+				if(!(event.itemRenderer is ADGdateRenderer))
+					showTask(event.currentTarget);
+			}
+			
+			private function refreshHandler():void{
+				switch(allTabs.selectedChild.name){					
+					case "content_tasks":
+						getTasks({id_staff_worker:Globals.id_staff});	
+						break;
+					case "content_confirm":						
+						getTasksConfirm({id_staff_worker:Globals.id_staff});
+						break;
+					case "content_redirect":
+						getTasksRedirect({id_staff_worker:Globals.id_staff});
+						break;
+					case "content_cancel":
+						getTasksCancel({id_staff_worker:Globals.id_staff});
+						break;
+					case "content_done":
+					//	getOldTasks();
+						break;
+					case "content_accept":
+					//	getConfirmedTasks();
+						break;										
+				}				
+			}		
+
+			
+			public function openTab(args:Array):void{
+				allTabs.selectedChild = this[args[0]];
+			}
+			
+			private function allTabsCreateComplete():void{
+				content_tasks.toolTip = "Невыполненные задачи";
+				content_confirm.toolTip = "Задачи на подтверждение";
+				content_cancel.toolTip = "Задачи, невозможно выполнить";
+				content_redirect.toolTip = "Задачи на перенаправление";
+			}
+			
+			
+			private function preInit():void{
+				SettingManager.initComponent(this);
+				this.removeEventListener(FlexEvent.PREINITIALIZE, preInit);
+			}
+
+		]]>
+	</fx:Script>
+
+	
+	<mx:TabNavigator id="allTabs" left="-1" top="0" bottom="0" right="0" change="refreshHandler()" creationComplete="allTabsCreateComplete()" borderVisible="false">
+		<s:NavigatorContent creationPolicy="all" id="content_tasks" label="Невыполненные" width="100%" height="100%">
+
+			<mx:AdvancedDataGrid id="tasksTable" dataTipFunction="showTooltip" allowMultipleSelection="false"
+								   variableRowHeight="true" itemClick="myADG_itemClickHandler(event)" itemDoubleClick="onItemDoubleClick(event)"
+								   wordWrap="true" left="-2" top="-5" right="-2" bottom="-2">
+				<mx:columns>
+					<mx:AdvancedDataGridColumn headerText="" width="0" 
+											   minWidth="0"											    
+											   dataField="date"/>
+					<mx:AdvancedDataGridColumn headerText="#" width="40" 
+											   dataField="num"/>
+					<mx:AdvancedDataGridColumn headerText="Проект"
+											   dataField="id_project_text" width="140" showDataTips="true"/>
+					<mx:AdvancedDataGridColumn headerText="Задача" showDataTips="true"
+											   dataField="name"/>
+					<mx:AdvancedDataGridColumn id="statusCol" headerText="Статус"
+											   dataField="status" width="120"/>
+					<mx:AdvancedDataGridColumn dataField="comments_count" 
+											   headerText="Комментарии" width="120"/>
+				</mx:columns>
+				<mx:rendererProviders>            
+					<mx:AdvancedDataGridRendererProvider 
+						dataField="date" 						
+						renderer="components.utils.renderers.ADGdateRenderer"
+						columnIndex="0" 
+						columnSpan="0"/>
+					<mx:AdvancedDataGridRendererProvider column="{statusCol}" depth="2" renderer="components.utils.renderers.TaskStatusRenderer"/>
+
+				</mx:rendererProviders>
+			</mx:AdvancedDataGrid>			
+			<s:HGroup right="20" bottom="10" alpha="0.6">
+				<s:Button label="&gt;&lt;" toolTip="Свернуть" width="35" fontFamily="Courier New" click="{tasksTable.collapseAll()}"/>
+				<s:Button label="&lt;&gt;" toolTip="Развернуть" width="35" fontFamily="Courier New" click="{tasksTable.expandAll()}"/>
+			</s:HGroup>
+		</s:NavigatorContent>
+		<s:NavigatorContent creationPolicy="all" id="content_confirm" label="На подтверждение" width="100%" height="100%">
+			<mx:DataGrid id="taskConfirmTable" horizontalScrollPolicy="on"
+						itemDoubleClick="onItemDoubleClick(event)" left="-1" top="-5" right="-1" bottom="-1">
+				<mx:columns>
+					<mx:DataGridColumn width="50" headerText="#" dataField="id_task"/>
+					<mx:DataGridColumn width="140" headerText="Проект" dataField="id_project_text"/>
+					<mx:DataGridColumn width="{taskConfirmTable.width-300}" headerText="Задача" dataField="name"/>
+					<mx:DataGridColumn width="100" headerText="Комментарии" dataField="comments_count"/>
+				</mx:columns>
+			</mx:DataGrid>	
+		</s:NavigatorContent>
+		<s:NavigatorContent creationPolicy="all" id="content_cancel" label="Невозможно выполнить" width="100%" height="100%">
+			<mx:DataGrid id="taskCancelTable" horizontalScrollPolicy="on"
+						 itemDoubleClick="onItemDoubleClick(event)" left="-1" top="-5" right="-1" bottom="-1">
+				<mx:columns>
+					<mx:DataGridColumn width="50" headerText="#" dataField="id_task"/>
+					<mx:DataGridColumn width="140" headerText="Проект" dataField="id_project_text"/>
+					<mx:DataGridColumn width="{taskCancelTable.width-300}" headerText="Задача" dataField="name"/>
+					<mx:DataGridColumn width="100" headerText="Комментарии" dataField="comments_count"/>
+				</mx:columns>
+			</mx:DataGrid>	
+		</s:NavigatorContent>
+		<s:NavigatorContent creationPolicy="all" id="content_redirect" label="Перенаправление" width="100%" height="100%">
+			<mx:DataGrid id="taskRedirectTable" horizontalScrollPolicy="on"
+						 itemDoubleClick="onItemDoubleClick(event)" left="-1" top="-5" right="-1" bottom="-1">
+				<mx:columns>
+					<mx:DataGridColumn headerText="#" dataField="id_task" width="40"/>
+					<mx:DataGridColumn headerText="Проект" dataField="id_project_text" width="80"/>
+					<mx:DataGridColumn headerText="Задача" dataField="name"/>
+					<mx:DataGridColumn headerText="Кто" dataField="id_staff_owner_text"/>
+					<mx:DataGridColumn headerText="Кому" dataField="id_staff_preferable_text"/>
+					<mx:DataGridColumn headerText="Кто добавил" dataField="id_staff_owner_text"/>
+					<mx:DataGridColumn headerText="Комментарии" dataField="comments_count" width="60"/>
+				</mx:columns>
+			</mx:DataGrid>	
+		</s:NavigatorContent>
+	</mx:TabNavigator>	
+</containers:MDIWindow>

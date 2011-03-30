@@ -1,0 +1,257 @@
+<?xml version="1.0" encoding="utf-8"?>
+<mx:Canvas xmlns:fx="http://ns.adobe.com/mxml/2009" 
+			 xmlns:s="library://ns.adobe.com/flex/spark" 
+			 xmlns:mx="library://ns.adobe.com/flex/mx" creationComplete="init()"
+			 verticalScrollPolicy="off" xmlns:utils="components.utils.*">
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+	
+	<fx:Style>
+		@namespace s "library://ns.adobe.com/flex/spark";
+		@namespace mx "library://ns.adobe.com/flex/mx";
+		
+		.filterInput{
+			fontSize: 12;
+			paddingTop: 4;
+			paddingBottom: 1;
+		}
+		
+	</fx:Style>
+	
+	<fx:Metadata>
+		[Event(name="doubleEdit", type="*")]
+		[Event(name="itemDoubleClick", type="*")]
+		[Event(name="itemClick", type="*")]
+	</fx:Metadata>
+	
+	<fx:Script>
+		<![CDATA[
+			import mx.collections.ArrayCollection;
+			import mx.controls.DataGrid;
+			import mx.controls.listClasses.IListItemRenderer;
+			import mx.core.EventPriority;
+			import mx.events.ListEvent;
+			import mx.utils.ObjectUtil;
+			
+			import spark.components.TextInput;
+			
+			
+			
+			public var columns:Array;
+			public var editable:Boolean = false;
+			
+			public var totalRows:int = 0;
+			
+			public var filter:Boolean = false;
+			public var mydoubleClickEnabled:Boolean = false;
+			public var mydoubleClickEdit:Boolean = false;
+			
+			public var parentObj:Object;
+			
+			public var actRenderer:Object;
+			private var doubleEditString:String;
+			
+			public var filterFunction:String = "";
+			
+			[Bindable]
+			public var customRowBackground:Boolean = false;
+			[Bindable]
+			public var wordWrap:Boolean = false;
+			[Bindable]
+			public var variableRowHeight:Boolean = false;
+			[Bindable]
+			public var borderVisible:Boolean = true;
+			
+			
+						
+			
+			private function init():void{
+				datagrid.columns = columns;
+				datagrid.editable = editable;
+				datagrid.doubleClickEnabled = mydoubleClickEnabled;
+				
+				filterPane.x = datagrid.x;
+				filterPane.width = datagrid.width;
+													
+				
+				for(var i:int=0; i < columns.length; i++){
+					var t:TextInput = new TextInput();
+					t.styleName = "filterInput";
+					addListener(t, i);
+					
+					filterPane.addElement(t);
+				}
+				
+				if(totalRows>0){
+					for(var j:int=0; j<totalRows; j++){
+						var dg:DataGrid = new DataGrid()
+						dg.showHeaders = false;
+						dg.percentWidth = 100;
+						dg.rowCount = 1;
+						dg.columns = columns;
+						gridLayout.addElement(dg);
+					}
+				}
+				
+				if(!filter){
+					removeChild(filterLayout);
+					gridLayout.y = 0;
+				}
+				
+				if(mydoubleClickEnabled){
+					if(mydoubleClickEdit){
+						datagrid.addEventListener(ListEvent.ITEM_DOUBLE_CLICK, onItemDoubleClick, 
+								            false, EventPriority.DEFAULT_HANDLER);
+						datagrid.addEventListener(ListEvent.ITEM_EDIT_END, onItemEditEnd,
+								            false, EventPriority.DEFAULT_HANDLER);
+						datagrid.addEventListener(ListEvent.ITEM_EDIT_BEGIN, onItemEditBegin,
+											false, EventPriority.DEFAULT_HANDLER);
+					}else{
+						datagrid.addEventListener(ListEvent.ITEM_DOUBLE_CLICK, onItemDoubleClick, 
+							false, EventPriority.DEFAULT_HANDLER);						
+					}
+				}
+				
+				function addListener(t:TextInput, i:int):void{
+					t.addEventListener(KeyboardEvent.KEY_UP, function(e:KeyboardEvent):void{
+																	filterGrid(e, columns[i].dataField)
+																	});
+				}
+			}
+			
+			public function set context(cm:ContextMenu):void{
+				datagrid.contextMenu = cm;
+				datagrid.addEventListener(MouseEvent.CONTEXT_MENU, onRightClick);
+			}
+
+			private function onItemDoubleClick(event:*):void {
+				/*if (event.itemRenderer.data == "One") {
+					return;
+				}*/
+				if (event.isDefaultPrevented()) {
+					return;
+				}
+				if(mydoubleClickEdit){
+					datagrid.editable = true;
+					doubleEditString = event.itemRenderer.listData.label;
+					datagrid.editedItemPosition = {columnIndex:event.columnIndex, rowIndex:event.rowIndex};
+				}else{
+					dispatchEvent(new Event("itemDoubleClick"));
+				}
+			}
+			
+			private function onItemClick():void{
+				dispatchEvent(new Event("itemClick"));
+			}
+			
+			private function onItemEditBegin(event:*):void {	
+				actRenderer = event.itemRenderer;
+			} 
+			private function onItemEditEnd(event:*):void {								
+				datagrid.editable = false;
+	//			actRenderer = event.itemRenderer;
+				if(doubleEditString != actRenderer.listData.label)
+					dispatchEvent(new Event("doubleEdit"));
+			}
+			private function onRightClick(e:MouseEvent):void{				
+				if(!fullData || fullData.length==0 && !(e.target is IListItemRenderer))
+					return;
+				
+				var r:IListItemRenderer = e.target as IListItemRenderer; 
+				if(r == null)
+					return;
+				var selectedIndex:int = datagrid.itemRendererToIndex(r); 
+				datagrid.selectedIndex = selectedIndex;
+				datagrid.setStyle("rollOverColor", undefined);
+				
+		//		parentObj.getContextMenu(datagrid.selectedItem);				
+			}
+		
+			
+			private var fullData:ArrayCollection;
+			
+			private function filterGrid(e:KeyboardEvent, obj:String):void{
+				if(!fullData || fullData.length==0)
+					return;
+				var txt:String = e.target.text;
+				if(e.keyCode == 13){
+					var o:Object = new Object();
+					o[obj] = txt;
+					if(filterFunction != "")
+						parentObj[filterFunction](o);
+				}
+				if(txt==""){
+					datagrid.dataProvider = fullData;
+					return;
+				}		
+								
+				var newData:ArrayCollection = new ArrayCollection(ObjectUtil.copy(fullData.source) as Array );	
+				var list:ArrayCollection = new ArrayCollection();
+				
+			//	var pattern:RegExp = new RegExp("^ ?"+txt.toLowerCase(), "i");
+				var pattern:RegExp = new RegExp(txt.toLowerCase(), "i");
+				for(var i:int = 0; i<newData.length; i++){					
+					if (pattern.test(newData[i][obj].toLowerCase())){						
+						list.addItem(newData[i]);
+					}
+				}
+				datagrid.dataProvider = list;
+			}
+			
+			
+			
+			public function set dataProvider(data:Object):void{
+				datagrid.dataProvider = data;
+				fullData = data as ArrayCollection;
+				datagrid.invalidateSize();
+			}
+
+
+			protected function datagrid_renderHandler(event:Event):void{
+				for(var i:int=0; i < datagrid.columns.length; i++){
+					filterPane.getChildAt(i).width = datagrid.columns[i].width - 3;
+				}
+			}
+			
+			public function get selectedItem():Object{
+				return datagrid.selectedItem;
+			}
+			
+			public function get dataProvider():Object{
+				return datagrid.dataProvider;
+			}
+			
+			public function set selectedIndex(i:int):void{
+				datagrid.selectedIndex = i;
+			}			
+			
+			public function itemRendererToIndex(r:IListItemRenderer):int{
+				return datagrid.itemRendererToIndex(r);
+			}
+			
+			public function get itemEditorInstance():IListItemRenderer{
+				return datagrid.itemEditorInstance;
+			}
+			
+			
+					
+			/*override public function set contextMenu(m:NativeMenu):void{
+				datagrid.contextMenu = m;
+			}*/
+
+		]]>
+	</fx:Script>
+	<mx:Canvas horizontalScrollPolicy="off" width="100%"
+			   id="filterLayout"
+			   backgroundColor="0xe0e0e0">
+		<s:HGroup id="filterPane" x="1" y="1" width="100%" height="23" 
+				  gap="3" verticalAlign="middle" paddingLeft="1"/>	
+	</mx:Canvas>
+	<mx:VBox id="gridLayout" x="0" y="23" width="100%" height="100%" verticalGap="0">
+		<mx:Canvas id="ca" width="100%" height="100%" verticalScrollPolicy="auto">			
+			<utils:CustomDataGrid render="datagrid_renderHandler(event)" borderVisible="{borderVisible}" id="datagrid" wordWrap="{wordWrap}" variableRowHeight="{variableRowHeight}" customRowBackground="{customRowBackground}"
+						 width="100%" height="100%" verticalScrollPolicy="auto" itemClick="onItemClick()"/>
+		</mx:Canvas>
+	</mx:VBox>
+</mx:Canvas>

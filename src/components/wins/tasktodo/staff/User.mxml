@@ -1,0 +1,352 @@
+<?xml version="1.0" encoding="utf-8"?>
+<containers:MDIWindow xmlns:fx="http://ns.adobe.com/mxml/2009" 
+					  xmlns:s="library://ns.adobe.com/flex/spark" 
+					  xmlns:mx="library://ns.adobe.com/flex/mx" 
+					  xmlns:containers="flexmdi.containers.*"  layout="absolute"
+					  title="Пользователи" xmlns:utils="components.utils.*"
+					  width="100%" height="100%" minWidth="640" minHeight="480"
+					  initialize="init()">
+	
+	<fx:Declarations>
+		<mx:StringValidator id="val_name_second" source="{name_second}" property="text" minLength="2" requiredFieldError="Фамилия не заполнено"/>
+		<mx:StringValidator id="val_name_first" source="{name_first}" property="text" minLength="2" requiredFieldError="Имя не заполнено"/>
+		<mx:StringValidator id="val_name_middle" source="{name_middle}" property="text" minLength="2" requiredFieldError="Отчество не заполнено"/>
+		<mx:DateValidator wrongYearError="Введите год между 0 и 9999" 
+						  wrongMonthError="Введите месяц между 1 и 12" 
+						  wrongDayError="Введите корректный день месяца" 
+						  invalidCharError="Поле содержит неправильные символы"
+						  wrongLengthError="Введите дату в формате "
+						  id="val_birthday"  inputFormat="DD-MM-YYYY" source="{birthday}" property="text" requiredFieldError="Дата рождения не заполнено"/>
+		
+		<mx:NumberValidator id="val_id_department" source="{id_department}" property="selectedIndex" minValue="0" lowerThanMinError="Должность не заполнено"  />
+		<mx:NumberValidator id="val_id_dv3" source="{id_dv3}" property="selectedIndex" minValue="0" lowerThanMinError="Тип занятости не заполнено"  />
+		
+		<mx:StringValidator id="val_login" source="{login}" property="text" minLength="2" requiredFieldError="Логин не заполнено"/>
+		<mx:StringValidator id="val_password" source="{password}" property="text" minLength="2" requiredFieldError="Пароль не заполнено"/>
+		
+		<mx:DateValidator id="val_date_work" inputFormat="DD-MM-YYYY" source="{date_work}" property="text" requiredFieldError="Дата зачисления не заполнено" />
+		
+	
+		
+	<!--	<mx:EmailValidator id="val_mail_work" source="{mail_work}" property="text" requiredFieldError="E-mail не заполнено"/>
+		<mx:EmailValidator id="val_mail_home" source="{mail_home}" property="text" requiredFieldError="E-mail не заполнено"/>
+		<mx:PhoneNumberValidator id="val_phone_work" minDigits="7" source="{phone_work}" property="text" requiredFieldError="Телефон не заполнено"/>
+		<mx:PhoneNumberValidator id="val_phone_home" minDigits="7" source="{phone_home}" property="text" requiredFieldError="Телефон не заполнено"/>
+		<mx:PhoneNumberValidator id="val_phone_mobile" minDigits="7" source="{phone_mobile}" property="text" requiredFieldError="Телефон не заполнено"/>
+	-->	
+
+	</fx:Declarations>
+	
+	<fx:Script>
+		<![CDATA[
+			import classes.Remote;
+			import classes.WinManager;
+			
+			import components.utils.Func;
+			
+			import mx.collections.ArrayCollection;
+			import mx.controls.Alert;
+			import mx.utils.ObjectProxy;
+			
+			import mx.binding.utils.*;
+			
+			import spark.components.CheckBox;
+			import spark.components.TileGroup;
+			
+			[Bindable]
+			public var _data:ObjectProxy;
+			
+			[Bindable]
+			private var _departments:ArrayCollection;
+			
+			[Bindable]
+			private var _dv3:ArrayCollection;
+			
+			[Bindable]
+			private var _users:ArrayCollection;
+			
+			private var validatorArray:Array;
+
+			private function init():void{
+				getDepartments();
+				getDv3();
+				getUsers();
+				validatorArray = [	val_name_second, 
+									val_name_first, 
+									val_name_middle, 
+									val_birthday, 
+									val_id_department, 
+									val_id_dv3, 
+									val_login, 
+									val_password, 
+									val_date_work
+								];
+			}
+			
+			public function getDepartments(param:Object = null):void{
+				Remote.setRequest("Users", this, "getDepartments");
+			}
+			public function Users_getDepartmentsResult(result:Object):void{
+				_departments = new ArrayCollection(result.data as Array)
+				if(_data){
+					id_department.selectedIndex = Func.getProviderIndex(_departments, "id_department", _data.id_department);
+				}
+			}	
+			
+			public function getDv3(param:Object = null):void{
+				Remote.setRequest("Users", this, "getDv3");
+			}
+			public function Users_getDv3Result(result:Object):void{
+				_dv3 = new ArrayCollection(result.data as Array)
+				if(_data){
+					id_dv3.selectedIndex = Func.getProviderIndex(_dv3, "id_dv3", _data.id_dv3);
+				}
+			}	
+			
+			public function getUsers(param:Object = null):void{
+				Remote.setRequest("Users", this, "getLiteList");
+			}
+			public function Users_getLiteListResult(result:Object):void{
+				_users = new ArrayCollection(result.data as Array);
+				
+				id_parent.dataProvider = Func.insertBlankItem(_users, 'name_second', 'id_parent', 'id_staff')
+				if(_data){
+					id_parent.selectedIndex = Func.getProviderIndex(_users, "id_staff", _data.id_parent);
+				}
+			}
+			
+		
+		
+			private function checkData():void{
+				if(!Func.validateForm(validatorArray))
+					return;				
+				
+				var newData:Object = {};
+				newData = Func.showInputs(tabControl, newData);
+				
+				if(_data == null)
+					Remote.setRequest("Users", this, "add", newData);
+				else
+					Remote.setRequest("Users", this, "edit", newData, _data.id_staff);
+			}
+			
+			public function Users_addResult(res:Object):void{
+				if(res.data.add){
+					WinManager.close_open(this, "UserCard", {id_staff:res.data.id_staff});
+				}
+			}	
+	
+			public function Users_editResult(res:Object):void{
+				if(res.data.edit){
+					WinManager.close_open(this, "UserCard", _data);
+				}else{
+					var message:String = "";
+					for(var i:int=0; i<res.messages.length; i++){
+						if(res.messages[i].text!="")
+							message += res.messages[i].text + "\n";
+					}
+					Alert.show( message, "Редактирование не удалось" );
+				}
+			}				
+			
+			private function nextTab(dir:int = 1):void{
+				var i:int = tabControl.selectedIndex;
+				i += dir;
+				i = (i >= tabControl.numElements)? 0 : i;
+				i = (i < 0)?(tabControl.numElements-1) : i;
+				tabControl.selectedIndex = i;
+			}
+
+			protected function checkAll(check:Boolean = true):void{
+				var f:FormItem = new FormItem();
+				for(var i:int = 0; i < accessForm.numChildren; i++){
+					if(Func.getClass(accessForm.getChildAt(i))== Func.getClass(f)){
+						checkGroup(accessForm.getChildAt(i));					
+					}
+				}
+				
+				function checkGroup(item:FormItem):void{
+					var tile:TileGroup = item.getChildAt(0) as TileGroup;
+					var num:int = tile.numChildren;
+					for(var i:int=0; i<num; i++){
+						(CheckBox)(tile.getChildAt(i)).selected = check;
+					}
+				}
+			}
+
+			
+			override public function set data(d:Object):void{
+				if(d == null){
+					Remote.setRequest("Users", this, "getAccess");
+					return;
+				}
+				_data = new ObjectProxy(d);
+				Remote.setRequest("Users", this, "getEdit", null, d.id_staff);
+			}
+			
+			public function Users_getEditResult(result:Object):void{
+				if(result.data){
+					_data = new ObjectProxy(result.data[0]);
+					createAccessList(_data.access);
+					setDropdownLists();
+				}
+				else{
+					if(result.messages.length > 0){
+						Alert.show( result.messages[0].text, "Error" );
+					}
+				}
+			}
+			
+			private function setDropdownLists():void{
+				id_department.selectedIndex = Func.getProviderIndex(_departments, "id_department", _data.id_department);
+				id_dv3.selectedIndex = Func.getProviderIndex(_dv3, "id_dv3", _data.id_dv3);
+				id_parent.selectedIndex = Func.getProviderIndex(_users, "id_parent", _data.id_parent);
+			}
+			
+			public function Users_getAccessResult(result:Object):void{
+				if(result.data){
+					createAccessList(result.data);
+				}
+			}
+
+
+			
+			private function createAccessList(accList:Array):void{
+
+				var group:String;
+				var fItem:FormItem = new FormItem();
+				var tGroup:TileGroup = new TileGroup();
+				for(var i:int=0; i<accList.length; i++){
+					var o:Object = accList[i];
+					
+					if(o.group!=group){
+						group = o.group;
+						fItem = new FormItem();
+						fItem.percentWidth = 100
+						tGroup = new TileGroup();
+						tGroup.requestedColumnCount = 2;
+						fItem.addElement(tGroup);
+						fItem.label = o.group;
+						accessForm.addElement(fItem);
+						accessForm.addElement(Func.getHRule(100));
+						
+					}
+					var cb:CheckBox = new CheckBox();
+					cb.id = o.alias;
+					cb.label = o.name;
+					cb.selected = o.active;
+					cb.width = 180;
+					tGroup.addElement(cb);					
+				}				
+			} 
+			
+			
+
+		]]>
+	</fx:Script>
+
+	
+	<mx:TabNavigator bottom="40" top="0" left="0" right="0" id="tabControl" creationPolicy="all" tabIndex="13">
+		<s:NavigatorContent id="main" label="Основные" width="100%" height="100%">
+			<mx:Form id="mainForm" height="100%" bottom="0" width="405" horizontalCenter="0"  horizontalScrollPolicy="off">
+				<mx:FormItem label="Фамилия" horizontalAlign="right" required="true">
+					<s:TextInput tabIndex="1" id="name_second" width="230" x="82" text="{_data.name_second}"/>
+				</mx:FormItem>
+				<mx:FormItem label="Имя" horizontalAlign="right" required="true">
+					<s:TextInput tabIndex="2" id="name_first" width="230" x="61" text="{_data.name_first}"/>
+				</mx:FormItem>
+				<mx:FormItem label="Отчество" horizontalAlign="right" required="true">
+					<s:TextInput tabIndex="3" id="name_middle" width="230" x="17" text="{_data.name_middle}"/>
+				</mx:FormItem>
+				<mx:FormItem label="Дата рождения" horizontalAlign="right" required="true">
+					<mx:DateField editable="true" tabIndex="4" id="birthday" text="{Func.convertStringDate(_data.birthday)}" monthNames="{Globals.months}" dayNames="{Globals.days}" width="137" x="92" formatString="DD-MM-YYYY" firstDayOfWeek="1"/>
+				</mx:FormItem>
+				<mx:FormItem label="Образование" horizontalAlign="right">
+					<s:TextInput tabIndex="5" id="education" width="230" x="17" text="{_data.education}"/>
+				</mx:FormItem>
+				<mx:FormItem label="Должность" horizontalAlign="right" required="true">
+					<s:DropDownList tabIndex="6" prompt="Выберите должность" id="id_department" labelField="name" dataProvider="{_departments}" width="230" x="105" selectedIndex="-1"/>
+				</mx:FormItem>
+				<mx:FormItem label="Тип занятости" horizontalAlign="right" required="true">
+					<s:DropDownList tabIndex="7" prompt="Выберите тип занятости" id="id_dv3" labelField="name" dataProvider="{_dv3}" width="230" x="105" selectedIndex="-1"/>
+				</mx:FormItem>
+				<mx:FormItem label="Руководитель" horizontalAlign="right" required="false">
+					<utils:UserDropDownList tabIndex="8" prompt="Выберите руководителя" id="id_parent" labelField="name_second" labelFunction="Func.myNameLabelFunction" width="230" x="105" selectedIndex="-1"/>
+				</mx:FormItem>
+				<mx:FormItem label="Логин" horizontalAlign="right" required="true">
+					<s:TextInput tabIndex="9" id="login" width="230" x="61" text="{_data.login}"/>
+				</mx:FormItem>
+				<mx:FormItem label="Пароль" horizontalAlign="right" required="true">
+					<s:TextInput tabIndex="10" id="password" width="230" x="17"  text="{_data.password}"/>
+				</mx:FormItem>
+				<mx:FormItem label="Дата зачисления" horizontalAlign="right" required="true">
+					<mx:DateField tabIndex="11" id="date_work" text="{Func.convertStringDate(_data.date_work)}" monthNames="{Globals.months}" dayNames="{Globals.days}" width="141" x="111" formatString="DD-MM-YYYY" firstDayOfWeek="1"/>
+				</mx:FormItem>
+			</mx:Form>
+		</s:NavigatorContent>
+		<s:NavigatorContent id="contacts" label="Контакты" width="100%" height="100%">	
+			<mx:Form id="contactsForm" width="405" horizontalCenter="0" horizontalScrollPolicy="off">
+				<mx:FormItem label="E-mail рабочий " horizontalAlign="right" required="true">
+					<s:TextInput id="mail_work" width="230" x="82" text="{_data.mail_work}"/>
+				</mx:FormItem>
+				<mx:FormItem label="E-mail домашний" horizontalAlign="right" required="true">
+					<s:TextInput id="mail_home" width="230" x="61" text="{_data.mail_home}"/>
+				</mx:FormItem>
+				<mx:FormItem label="Телефон рабочий" horizontalAlign="right" required="true">
+					<s:TextInput id="phone_work" width="230" x="17" text="{_data.phone_work}"/>
+				</mx:FormItem>
+				<mx:FormItem label="Телефон домашний" horizontalAlign="right" required="true">
+					<s:TextInput id="phone_home" width="230" x="17" text="{_data.phone_home}"/>
+				</mx:FormItem>
+				<mx:FormItem label="Телефон мобильный" horizontalAlign="right" required="true">
+					<s:TextInput id="phone_mobile" width="230" x="61" text="{_data.phone_mobile}"/>
+				</mx:FormItem>
+				<mx:FormItem label="ICQ" horizontalAlign="right" required="false">
+					<s:TextInput id="icq" width="230" x="17" text="{_data.icq}"/>
+				</mx:FormItem>
+				<mx:HRule width="370"/>
+				<mx:FormItem label="Номер" horizontalAlign="right" required="false">
+					<s:TextInput id="passport" width="230" x="82" text="{_data.passport}"/>
+				</mx:FormItem>
+				<mx:FormItem label="Кем выдан" horizontalAlign="right" required="false">
+					<s:TextInput id="passport_who" width="230" x="61" text="{_data.passport_who}"/>
+				</mx:FormItem>
+				<mx:FormItem label="Когда выдан" horizontalAlign="right" required="false">
+					<s:TextInput id="passport_when" width="230" x="17" text="{_data.passport_when}"/>
+				</mx:FormItem>
+				<mx:FormItem label="Регистрация">
+					<s:TextArea id="address_reg" width="230" text="{_data.address_reg}" height="33"/>
+				</mx:FormItem>
+				<mx:FormItem label="Домашний адрес">
+					<s:TextArea id="address_home" width="230" text="{_data.address_home}" height="33"/>
+				</mx:FormItem>
+			</mx:Form>
+		</s:NavigatorContent>		
+		
+		
+		<s:NavigatorContent id="access" label="Права доступа" width="100%" height="100%">
+			<s:HGroup horizontalCenter="0" width="358" requestedColumnCount="2" variableColumnWidth="false" columnWidth="125" gap="100" verticalAlign="top" top="10">		
+				<s:Button label="Отметить все" width="40" bottom="10" click="checkAll()" left="10"/>
+				<s:Button label="Снять выделение" width="120" bottom="10" click="checkAll(false)" right="132"/>
+			</s:HGroup>
+			<mx:Canvas id="formContainer" top="45" bottom="10" horizontalCenter="0" horizontalScrollPolicy="off">
+			<mx:Form id="accessForm" textAlign="center" width="512"  horizontalScrollPolicy="off" verticalScrollPolicy="off" horizontalCenter="0">
+				
+				<!--<mx:FormItem label="Права доступа" width="100%">
+					<s:TileGroup x="91" y="-5" requestedRowCount="2" requestedColumnCount="2">
+						<s:CheckBox id="action_show" label="Просмотр" selected="{_data.access.action_show}"/>
+						<s:CheckBox id="action_add" label="Добавление" selected="{_data.access.action_add}"/>
+						<s:CheckBox id="action_edit" label="Редактирование" selected="{_data.access.action_edit}"/>
+						<s:CheckBox id="action_del" label="Удаление" selected="{_data.access.action_del}"/>
+					</s:TileGroup>
+				</mx:FormItem>
+				<mx:HRule width="357"/>-->
+				
+			</mx:Form>
+			</mx:Canvas>
+		</s:NavigatorContent>
+	</mx:TabNavigator>
+	<s:Button label="&lt;&lt;" width="40" bottom="10" click="nextTab(-1)" left="10"/>
+	<s:Button label="&gt;&gt;" width="40" bottom="10" click="nextTab()" right="10"/>
+	<s:Button tabIndex="12" label="Сохранить" click="checkData()" horizontalCenter="0" bottom="10"/>	
+</containers:MDIWindow>

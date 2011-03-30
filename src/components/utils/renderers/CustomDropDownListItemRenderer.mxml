@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- http://blog.flexexamples.com/2010/05/13/setting-the-text-roll-over-color-on-a-spark-dropdownlist-control-in-flex-4/ -->
+<s:ItemRenderer name="CustomSparkItemRenderer"
+				xmlns:fx="http://ns.adobe.com/mxml/2009" 
+				xmlns:s="library://ns.adobe.com/flex/spark" 
+				xmlns:mx="library://ns.adobe.com/flex/mx" 
+				autoDrawBackground="true">
+	<s:states>
+		<s:State name="normal" />
+		<s:State name="hovered" />
+		<s:State name="selected" />
+	</s:states>
+	
+	<s:Label id="labelDisplay"
+			 color="black"
+			 color.hovered="black"
+			 color.selected="white" fontSize="11"
+			 left="3" right="3" top="3" bottom="2" />
+	
+</s:ItemRenderer>

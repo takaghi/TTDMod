@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<services-config>
+
+    <services>
+        <service-include file-path="remoting-config.xml" />
+        <service-include file-path="messaging-config.xml" />
+    </services>
+
+    <channels>
+        <channel-definition id="my-amf" class="mx.messaging.channels.AMFChannel">
+            <endpoint uri="weborb.php" class="flex.messaging.endpoints.AMFEndpoint"/>
+            <properties>
+                <polling-enabled>false</polling-enabled>
+            </properties>
+        </channel-definition>
+        
+        <channel-definition id="my-rtmp" class="mx.messaging.channels.AMFChannel">
+            <endpoint uri="weborb.php" class="flex.messaging.endpoints.AMFEndpoint"/>
+            <properties>
+                <polling-enabled>false</polling-enabled>
+            </properties>
+        </channel-definition> 
+        
+        <channel-definition id="weborb-rtmp" class="mx.messaging.channels.AMFChannel">
+            <endpoint uri="weborb.php" class="flex.messaging.endpoints.AMFEndpoint"/>
+            <properties>
+                <polling-enabled>false</polling-enabled>
+            </properties>
+        </channel-definition>
+
+        <channel-definition id="my-amf-absolute" class="mx.messaging.channels.AMFChannel">
+            <endpoint uri="http://tasktodo.alkohost.ru/WEBORB/weborb.php" class="flex.messaging.endpoints.AMFEndpoint"/>
+            <properties>
+                <polling-enabled>false</polling-enabled>
+            </properties>
+        </channel-definition>
+        
+        <channel-definition id="my-secure-amf" class="mx.messaging.channels.SecureAMFChannel">
+            <endpoint uri="weborb.php" class="flex.messaging.endpoints.SecureAMFEndpoint"/>
+        </channel-definition>
+
+ 		<channel-definition id="my-air-amf" class="mx.messaging.channels.AMFChannel">
+            <endpoint uri="http://localhost/WEBORB/weborb.php" class="flex.messaging.endpoints.AMFEndpoint"/>
+           <!-- <endpoint uri="http://192.168.0.64:271/WEBORB/weborb.php" class="flex.messaging.endpoints.AMFEndpoint"/>-->
+            <!--<endpoint uri="http://tasktodo.alkohost.ru/WEBORB/weborb.php" class="flex.messaging.endpoints.AMFEndpoint"/>
+            <endpoint uri="http://tasktodo.alkodesign.ru/WEBORB/weborb.php" class="flex.messaging.endpoints.AMFEndpoint"/>-->
+            <properties>
+                <polling-enabled>false</polling-enabled>
+            </properties>
+        </channel-definition>
+        
+        <channel-definition id="my-polling-amf" class="mx.messaging.channels.AMFChannel">
+            <endpoint uri="weborb.php" class="flex.messaging.endpoints.AMFEndpoint"/>
+            <properties>
+                <polling-enabled>true</polling-enabled>
+                <polling-interval-seconds>1</polling-interval-seconds>
+            </properties>
+        </channel-definition> 
+        
+    </channels>
+
+</services-config>

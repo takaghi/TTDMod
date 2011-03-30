@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:BorderContainer xmlns:fx="http://ns.adobe.com/mxml/2009" 
+				   xmlns:s="library://ns.adobe.com/flex/spark" 
+				   xmlns:mx="library://ns.adobe.com/flex/mx"
+				   skinClass="components.utils.skins.winTitleSkin">
+	<fx:Script>
+		<![CDATA[
+			import components.utils.skins.winTitleSkin;
+			
+			private var _active:Boolean = false;
+			
+			public function set active(a:Boolean):void{
+				_active = a;
+				invalidateSkinState();
+			}
+								
+			override protected function getCurrentSkinState() : String{
+				if (_active)
+					return "active";
+				return "normal"
+			}
+			
+			
+		]]>
+	</fx:Script>
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+	
+	<fx:Metadata>
+		[SkinState("active")]
+		[SkinState("normal")]
+		
+		
+	</fx:Metadata>
+</s:BorderContainer>

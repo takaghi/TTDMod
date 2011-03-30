@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="utf-8"?>
+<containers:MDIWindow xmlns:fx="http://ns.adobe.com/mxml/2009" 
+				   xmlns:s="library://ns.adobe.com/flex/spark" 
+				   xmlns:mx="library://ns.adobe.com/flex/mx" 
+				   xmlns:containers="flexmdi.containers.*" 
+				   layout="absolute" width="100%" height="100%"
+				   creationComplete="init()" title="Загрузчик">
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+	
+	<fx:Script>
+		<![CDATA[
+			import flash.filesystem.File;
+			
+			[Bindable]
+			private var _data:Object;
+			
+			
+			private function init():void{	
+				if(_data != null){
+					removeChild(but);
+					swf.bottom = 0;
+				}
+			}
+						
+			
+			/**
+			 * 	Выбор файла
+			 * 
+			 * @param	caller объект(страница) вызвавший функцию
+			 * @param	type	тип файла
+			 * @param	field	текстовое поле для получения адреса
+			 * @param	path	папка для файла(имя шаблона)
+			 * @param	newTemp	флаг используется при создании шаблона
+			 * @param	list	флаг используется для файлов галереи
+			 */
+			public function setPath(path:String="", newTemp:Boolean=false, list:Boolean=false):void{				
+				
+				var filter:FileFilter =  new FileFilter("Файл расширения", "*.swf");;
+				var destination:File;
+				var newPath:String = File.applicationDirectory.nativePath+"\\plugins\\";
+								
+				
+				var fileToOpen:File = new File();
+				try 
+				{
+					fileToOpen.browseForOpen("Open", [filter]);
+					fileToOpen.addEventListener(Event.SELECT, fileSelected);
+				}
+				catch (error:Error){
+					trace("Failed:", error.message)
+				}	
+				function fileSelected(event:Event):void {	
+					trace(newPath + fileToOpen.name)
+					destination = File.documentsDirectory.resolvePath(newPath + fileToOpen.name);
+					fileToOpen.addEventListener(Event.COMPLETE, fileMoveCompleteHandler);
+					fileToOpen.addEventListener(IOErrorEvent.IO_ERROR, fileMoveIOErrorEventHandler);
+					fileToOpen.copyToAsync(destination);				
+				}
+				function fileMoveCompleteHandler(event:Event=null):void {
+					fileToOpen.removeEventListener(Event.COMPLETE, fileMoveCompleteHandler);
+					trace(fileToOpen.name);
+					swf.source = newPath+fileToOpen.name;
+				}
+				function getPath(p:String):String{
+					return p;
+				}
+				function fileMoveIOErrorEventHandler(event:IOErrorEvent):void {
+					trace("I/O Error.", event); 
+				}
+				function doRewrite(e:Event):void{
+					fileToOpen.addEventListener(Event.COMPLETE, fileMoveCompleteHandler);
+					fileToOpen.addEventListener(IOErrorEvent.IO_ERROR, fileMoveIOErrorEventHandler);
+					fileToOpen.copyToAsync(destination,true); 
+				}			
+			}
+			override public function set data(d:Object):void{
+				if(d == null)
+					return;
+				_data = d;
+				this.title = _data.name;
+			}
+		]]>
+	</fx:Script>
+	<mx:SWFLoader source="{_data.path}" x="0" width="100%" id="swf" bottom="40" autoLoad="true" top="0"/>	
+	<s:Button id="but" label="Button" right="10" bottom="10" click="setPath()"/>
+</containers:MDIWindow>

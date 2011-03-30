@@ -1,0 +1,190 @@
+<?xml version="1.0" encoding="utf-8"?>
+<containers:MDIWindow xmlns:fx="http://ns.adobe.com/mxml/2009" 
+					  xmlns:s="library://ns.adobe.com/flex/spark" 
+					  xmlns:mx="library://ns.adobe.com/flex/mx" 
+					  xmlns:containers="flexmdi.containers.*" 
+					  layout="absolute" width="100%" height="100%"
+					  title="{'Карта сотрудника: '+_data.name_second +' '+_data.name_first+' '+_data.name_middle}"
+					  initialize="init()" minWidth="640" minHeight="480">
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+	
+	<fx:Script>
+		<![CDATA[
+			import classes.Remote;
+			import classes.StatusManager;
+			import classes.WinManager;
+			
+			import components.utils.Func;
+			
+			import mx.controls.Alert;
+			import mx.utils.ObjectProxy;
+			
+			import spark.components.HGroup;
+			
+			[Bindable]
+			private var _data:ObjectProxy;
+						
+			private function init():void{
+
+			}
+			
+			override public function set data(d:Object):void{
+				_data = new ObjectProxy(d);
+				Remote.setRequest("Users", this, "getOne", null, d.id_staff);
+			}
+			
+			public function Users_getOneResult(result:Object):void{
+				_data = new ObjectProxy(result.data[0]);
+				createAccessList(_data.access);
+			/*	if(result.messages.length > 0){
+					
+				}*/
+			}
+			
+			private function edit():void{
+				var winTitle:String = "";
+				winTitle = "Редактирование пользователя: "+ _data.name_second+" "+_data.name_first;				
+				WinManager.close_open(this, "User", _data, winTitle);
+			}
+			
+			
+			
+			import mx.binding.utils.*;
+			
+			
+			private function createAccessList(accList:Array):void{
+
+					var group:String;
+				var fItem:HGroup = new HGroup();
+				var tGroup:VGroup = new VGroup();
+				for(var i:int=0; i<accList.length; i++){
+					var o:Object = accList[i];
+					
+					if(o.group!=group){
+						if(!o.active)
+							continue;
+						group = o.group;
+						fItem = new HGroup();
+						fItem.percentWidth = 100
+						tGroup = new VGroup();
+					//	tGroup.requestedColumnCount = 2;
+						var l:Label = new Label();
+						l.text = group;
+						l.width = 200;
+						fItem.addElement(l);
+						fItem.addElement(tGroup);
+						
+						access_groups.addElement(fItem);
+						access_groups.addElement(Func.getHRule(100));
+						
+					}
+					var cb:Label = new Label();
+					cb.id = o.alias;
+					cb.text = o.name;
+					cb.percentWidth = 100;
+					if(o.active)
+						tGroup.addElement(cb);					
+				}
+				
+			} 
+			
+			private function openCalendar():void{
+				WinManager.addWin('Calendar', _data);
+			}
+			
+
+		]]>
+	</fx:Script>
+	
+	
+	<s:Label text="{_data.name_second +' '+_data.name_first+' '+_data.name_middle}" fontSize="20" fontFamily="Verdana" verticalAlign="middle" textAlign="center" horizontalCenter="0" top="10"/>
+	<mx:TabNavigator right="0" left="0" top="40" bottom="40" creationPolicy="all">
+		<s:NavigatorContent label="Основные" width="100%" height="100%">
+			<mx:Canvas width="480" height="100%" horizontalCenter="0">
+				<s:VGroup height="205" top="10" textAlign="right" left="0" width="87">
+					<s:Label text="Фамилия"/>
+					<s:Label text="Имя"/>
+					<s:Label text="Отчество"/>
+					<s:Label text="Логин"/>
+					<s:Label text="Образование"/>
+					<s:Label text="Статус"/>
+					<s:Label text="Руководитель"/>
+				</s:VGroup>
+				<s:VGroup y="10" height="205" left="86" width="121">
+					<s:Label text="{_data.name_second}" fontWeight="bold"/>
+					<s:Label text="{_data.name_first}" fontWeight="bold"/>
+					<s:Label text="{_data.name_middle}" fontWeight="bold"/>
+					<s:Label text="{_data.login}" fontWeight="bold"/>
+					<s:Label text="{_data.education}" fontWeight="bold"/>
+					<s:Label text="{_data.status}" fontWeight="bold"/>
+					<s:Label text="{_data.id_parent_text}" fontWeight="bold"/>
+				</s:VGroup>
+				
+				<s:VGroup height="205" top="10" textAlign="right" right="130">
+					<s:Label text="Мобильный телефон"/>
+					<s:Label text="Рабочий телефон"/>
+					<s:Label text="ICQ"/>
+				</s:VGroup>
+				<s:VGroup y="10" height="205" right="0">
+					<s:Label text="{_data.phone_mobile}" fontWeight="bold"/>
+					<s:Label text="{_data.phone_work}" fontWeight="bold"/>
+					<s:Label text="{_data.icq}" fontWeight="bold"/>
+				</s:VGroup>
+			</mx:Canvas>
+		</s:NavigatorContent>
+		<s:NavigatorContent label="Права доступа" width="100%" height="100%">
+			<mx:Canvas top="20" horizontalScrollPolicy="off" horizontalCenter="0" bottom="10">
+				<s:VGroup width="512" id="access_groups" horizontalCenter="0" gap="10">
+				<!--	<s:HGroup width="100%" id="action_show_group" visible="{_data.access.action_show || _data.access.action_add || _data.access.action_edit || _data.access.action_del}">
+						<s:Label text="Права доступа" fontSize="14" fontWeight="bold" width="120"/>
+						<s:VGroup width="120" textAlign="left">
+							<s:Label text="Просмотр" width="100%" textAlign="right" id="action_show" visible="{_data.access.action_show==true}"/>
+							<s:Label text="Добавление" width="100%" textAlign="right" id="action_add" visible="{_data.access.action_add}"/>
+							<s:Label text="Редактирование" width="100%" textAlign="right" id="action_edit" visible="{_data.access.action_edit}"/>
+							<s:Label text="Удаление" width="100%" textAlign="right" id="action_del" visible="{_data.access.action_del}"/>
+						</s:VGroup>					
+					</s:HGroup>
+					<mx:HRule width="100%"/>
+					<s:HGroup width="100%" id="staff_show_group" visible="{_data.access.staff_show || _data.access.staff_add || _data.access.staff_edit || _data.access.staff_del}">		
+						<s:Label text="Сотрудники" fontSize="14" fontWeight="bold" width="120"/>
+						<s:VGroup y="146" width="120">
+							<s:Label text="Просмотр" width="100%" textAlign="right" id="staff_show" visible="{_data.access.staff_show}"/>
+							<s:Label text="Добавление" width="100%" textAlign="right" id="staff_add" visible="{_data.access.staff_add}"/>
+							<s:Label text="Редактирование" width="100%" textAlign="right" id="staff_edit" visible="{_data.access.staff_edit}"/>
+							<s:Label text="Удаление" width="100%" textAlign="right" id="staff_del" visible="{_data.access.staff_del}"/>
+						</s:VGroup>
+					</s:HGroup>
+					<mx:HRule width="100%"/>
+					<s:HGroup width="100%" id="project_show_group" visible="{_data.access.project_show || _data.access.project_add || _data.access.project_edit || _data.access.project_del}">		
+						<s:Label text="Проекты" fontSize="14" fontWeight="bold" width="120"/>
+						<s:VGroup y="146" width="120">
+							<s:Label text="Просмотр" width="100%" textAlign="right" visible="{_data.access.project_show}"/>
+							<s:Label text="Добавление" width="100%" textAlign="right" visible="{_data.access.project_add}"/>
+							<s:Label text="Редактирование" width="100%" textAlign="right" visible="{_data.access.project_edit}"/>
+							<s:Label text="Удаление" width="100%" textAlign="right" visible="{_data.access.project_del}"/>
+						</s:VGroup>
+					</s:HGroup>
+					<mx:HRule width="100%"/>
+					<s:HGroup width="100%" id="task_show_group" visible="{_data.access.task_show || _data.access.task_add || _data.access.task_edit || _data.access.task_del}">		
+						<s:Label text="Сотрудники" fontSize="14" fontWeight="bold" width="120"/>
+						<s:VGroup y="146" width="120">
+							<s:Label text="Просмотр" width="100%" textAlign="right" id="task_show" visible="{_data.access.task_show}"/>
+							<s:Label text="Добавление" width="100%" textAlign="right" id="task_add" visible="{_data.access.task_add}"/>
+							<s:Label text="Редактирование" width="100%" textAlign="right" id="task_edit" visible="{_data.access.task_edit}"/>
+							<s:Label text="Удаление" width="100%" textAlign="right" id="task_del" visible="{_data.access.task_del}"/>
+							<s:Label text="Перенос" width="100%" textAlign="right" id="task_move" visible="{_data.access.task_move}"/>
+							<s:Label text="Фильтация" width="100%" textAlign="right" id="task_filter" visible="{_data.access.task_filter}"/>
+						</s:VGroup>
+					</s:HGroup>-->
+				</s:VGroup>
+			</mx:Canvas>
+			
+
+		</s:NavigatorContent>
+	</mx:TabNavigator>
+	<s:Button label="Редактировать" bottom="10" left="20" width="120" click="edit()" enabled="{Globals.access.staff_edit}"/>
+	<s:Button label="Календарь" bottom="10" horizontalCenter="0" width="120" click="openCalendar()"/>
+	<s:Button label="Закрыть" bottom="10" right="20" width="120" click="{WinManager.close_open(this)}"/>
+</containers:MDIWindow>

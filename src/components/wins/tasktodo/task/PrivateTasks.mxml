@@ -1,0 +1,233 @@
+<?xml version="1.0" encoding="utf-8"?>
+<containers:MDIWindow xmlns:fx="http://ns.adobe.com/mxml/2009" 
+					  xmlns:s="library://ns.adobe.com/flex/spark" 
+					  xmlns:mx="library://ns.adobe.com/flex/mx" 
+					  xmlns:containers="flexmdi.containers.*" layout="absolute" 
+					  initialize="init()" refresh="refreshHandler()" refreshAllow="true" 
+					  title="Личные задачи" xmlns:utils="components.utils.*" minWidth="832">
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+	
+	<fx:Script>
+		<![CDATA[
+			import classes.Remote;
+			import classes.TaskOperator;
+			import classes.WinManager;
+			
+			import components.utils.Func;
+			import components.utils.renderers.ADGdateRenderer;
+			
+			import mx.collections.ArrayCollection;
+			import mx.collections.HierarchicalData;
+			import mx.controls.advancedDataGridClasses.AdvancedDataGridItemRenderer;
+			import mx.controls.dataGridClasses.DataGridItemRenderer;
+			import mx.events.ListEvent;
+			
+			import spark.components.Label;
+			
+			private var taskOperator:TaskOperator;
+			
+			[Bindable]
+			private var _projects:ArrayCollection;
+			[Bindable]
+			private var _users:ArrayCollection;
+			
+			private var tasks:Array;
+			
+			private function init():void{
+				addContextMenu(tasksTable);
+				
+				getTasks({id_staff_worker:Globals.id_staff});					
+				getProjects();				
+			}
+			private function addContextMenu(obj:Object):void{
+				obj.addEventListener(MouseEvent.CONTEXT_MENU, onRightClick, false, 0, true);
+				obj.contextMenu = setContextMenu(obj);
+			}
+			
+			private function getTasks(param:Object = null):void{
+				Remote.setRequest("PrivateTask", this, "getList", param); 
+			}
+			public function PrivateTask_getListResult(result:Object):void{
+				var res:Array = result.data as Array;
+				if(res.length==0){
+					tasksTable.dataProvider = new ArrayCollection(res);
+					//	Alert.show( "Задач нет, сообщение руководителю отправлено", ":)" );
+					return;
+				}
+				content_tasks.label = "Не выполненные ("+res.length+")";
+				taskOperator = new TaskOperator(res, false);
+				tasks = taskOperator.getTasks();	
+				tasksTable.dataProvider = new HierarchicalData(tasks);
+				callLater(function():void{tasksTable.expandAll();});
+			}
+			
+		
+			private function getProjects(param:Object = null):void{
+				Remote.setRequest("Projects", this, "getLiteList",  param);
+			}
+			public function Projects_getLiteListResult(result:Object):void{
+				var res:Array = result.data as Array;
+				_projects = new ArrayCollection(res);
+			}	
+		
+			protected function myADG_itemClickHandler(event:ListEvent):void{
+				var item:Object = AdvancedDataGrid(event.currentTarget).selectedItem;
+				event.target.expandItem(item, !event.target.isItemOpen(item), true);
+			}
+			
+			private function setContextMenu(par:Object):ContextMenu{	
+				var cm:ContextMenu = new ContextMenu();
+				//var t1:NativeMenuItem = new NativeMenuItem(data.nick);
+				var show:NativeMenuItem = new NativeMenuItem("Просмотр");
+				show.addEventListener(Event.SELECT, function():void{showTask(par)});
+				//	var ok:NativeMenuItem = new NativeMenuItem("Подтвердить");
+				//	ok.addEventListener(Event.SELECT, function():void{okTask(data)})				
+				var edit:NativeMenuItem = new NativeMenuItem("Редактировать");
+				edit.addEventListener(Event.SELECT, function():void{editTask(par)});				
+				
+				//	var del:NativeMenuItem = new NativeMenuItem("Удалить");
+				//	del.addEventListener(Event.SELECT, function():void{delTaskQuest(data)})
+				var copy:NativeMenuItem = new NativeMenuItem("Копировать");
+				copy.addEventListener(Event.SELECT, function():void{copyTask(par)});
+				var add:NativeMenuItem = new NativeMenuItem("Новая задача");
+				add.addEventListener(Event.SELECT, function():void{addTask()});
+				
+				var items:Array = [];
+
+				if(Globals.access.task_show)
+					items.push(show);
+				if(Globals.access.task_edit)
+					items.push(edit);
+				
+				items.push(Func.getMenuSeparator());
+				items.push(copy);
+				items.push(Func.getMenuSeparator());
+				if(Globals.access.task_add)
+					items.push(add);
+				
+				cm.items = items;
+				
+				return cm;
+			}
+			
+			private function showTask(par:Object):void{
+				var item:Object = par.selectedItem;
+				if(!item)
+					return;
+				var winTitle:String;
+				winTitle = "Задача: " + item.id_private_task;
+				WinManager.addWin("PrivateTaskCard", item, winTitle);
+			}	
+			
+			
+			private function editTask(par:Object):void{
+				var item:Object = par.selectedItem;
+				var winTitle:String;
+				winTitle = "Редактирование задачи: " + item.id_private_task;
+				WinManager.addWin("PrivateTask", item, winTitle);
+			}
+			
+			private function addTask():void{
+				var winTitle:String;
+				winTitle = "Добавление задачи";
+				WinManager.addWin("PrivateTask", null, winTitle);
+			}
+			
+			private function copyTask(par:Object):void{
+				var item:Object = par.selectedItem;
+				System.setClipboard(item.id_project_text+": "+item.name);
+			}			
+						
+			private function onRightClick(e:MouseEvent):void{	
+				if(e.target is Label){
+					return;
+				}
+				
+				var r:*;
+				if(getQualifiedClassName(e.currentTarget)=="mx.controls::AdvancedDataGrid")
+					r = e.target as AdvancedDataGridItemRenderer; 
+				else
+					r = e.target as DataGridItemRenderer;
+				
+				if(r == null)
+					return;
+				var selectedIndex:int = e.currentTarget.itemRendererToIndex(r); 
+				e.currentTarget.selectedIndex = selectedIndex;
+				e.currentTarget.setStyle("rollOverColor", undefined);				
+			}			
+			
+			private function onItemDoubleClick(event:ListEvent):void{
+				if(!(event.itemRenderer is ADGdateRenderer))
+					showTask(event.currentTarget);
+			}
+			
+			private function refreshHandler():void{
+				switch(allTabs.selectedChild.name){					
+					case "content_tasks":
+						getTasks({id_staff_worker:Globals.id_staff});	
+						break;						
+				}				
+			}		
+			
+			
+			public function openTab(args:Array):void{
+				allTabs.selectedChild = this[args[0]];
+			}
+			
+			private function allTabsCreateComplete():void{
+				content_tasks.toolTip = "Невыполненные задачи";
+				content_confirm.toolTip = "Архив задач";
+			}
+			
+		]]>
+	</fx:Script>
+	
+	
+	<mx:TabNavigator id="allTabs" left="-1" top="0" bottom="0" right="0" change="refreshHandler()" creationComplete="allTabsCreateComplete()" borderVisible="false">
+		<s:NavigatorContent creationPolicy="all" id="content_tasks" label="Невыполненные" width="100%" height="100%">
+			
+			<mx:AdvancedDataGrid id="tasksTable" allowMultipleSelection="false"
+								 variableRowHeight="true" itemClick="myADG_itemClickHandler(event)" itemDoubleClick="onItemDoubleClick(event)"
+								 wordWrap="true" left="-2" top="-5" right="-2" bottom="-2">
+				<mx:columns>
+					<mx:AdvancedDataGridColumn headerText="" width="0" 
+											   minWidth="0"											    
+											   dataField="date"/>
+					<mx:AdvancedDataGridColumn headerText="#" width="40" 
+											   dataField="num"/>
+					<mx:AdvancedDataGridColumn headerText="Проект"
+											   dataField="id_project_text" width="140" showDataTips="true"/>
+					<mx:AdvancedDataGridColumn headerText="Задача" showDataTips="true"
+											   dataField="name"/>
+					<mx:AdvancedDataGridColumn id="statusCol" headerText="Статус"
+											   dataField="status" width="120"/>
+				</mx:columns>
+				<mx:rendererProviders>            
+					<mx:AdvancedDataGridRendererProvider 
+						dataField="date" 						
+						renderer="components.utils.renderers.ADGdateRenderer"
+						columnIndex="0" 
+						columnSpan="0"/>
+					<mx:AdvancedDataGridRendererProvider column="{statusCol}" depth="2" renderer="components.utils.renderers.TaskStatusRenderer"/>					
+				</mx:rendererProviders>
+			</mx:AdvancedDataGrid>			
+			<s:HGroup right="20" bottom="10" alpha="0.6">
+				<s:Button label="&gt;&lt;" toolTip="Свернуть" width="35" fontFamily="Courier New" click="{tasksTable.collapseAll()}"/>
+				<s:Button label="&lt;&gt;" toolTip="Развернуть" width="35" fontFamily="Courier New" click="{tasksTable.expandAll()}"/>
+			</s:HGroup>
+		</s:NavigatorContent>
+		<s:NavigatorContent creationPolicy="all" id="content_confirm" label="Архив задач" enabled="false" width="100%" height="100%">
+			<mx:DataGrid id="taskConfirmTable" horizontalScrollPolicy="on"
+						 itemDoubleClick="onItemDoubleClick(event)" left="-1" top="-5" right="-1" bottom="-1">
+				<mx:columns>
+					<mx:DataGridColumn width="50" headerText="#" dataField="id_task"/>
+					<mx:DataGridColumn width="140" headerText="Проект" dataField="id_project_text"/>
+					<mx:DataGridColumn width="{taskConfirmTable.width-300}" headerText="Задача" dataField="name"/>
+					<mx:DataGridColumn width="100" headerText="Комментарии" dataField="comments_count"/>
+				</mx:columns>
+			</mx:DataGrid>	
+		</s:NavigatorContent>
+	</mx:TabNavigator>	
+</containers:MDIWindow>

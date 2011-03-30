@@ -1,0 +1,376 @@
+<?xml version="1.0" encoding="utf-8"?>
+<containers:MDIWindow xmlns:fx="http://ns.adobe.com/mxml/2009" 
+					  xmlns:s="library://ns.adobe.com/flex/spark" 
+					  xmlns:mx="library://ns.adobe.com/flex/mx" 
+					  xmlns:containers="flexmdi.containers.*" layout="absolute" 
+					  width="940" height="100%" creationComplete="init()"
+					  title="Перенос задач" xmlns:utils="components.utils.*" minWidth="942">
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+	
+	<fx:Script>
+		<![CDATA[
+			import classes.Remote;
+			import classes.TaskOperator;
+			import classes.WinManager;
+			
+			import components.utils.Func;
+			import components.utils.HTMLToolTip;
+			import components.utils.renderers.ADGdateRenderer;
+			
+			import mx.collections.ArrayCollection;
+			import mx.collections.HierarchicalData;
+			import mx.controls.Alert;
+			import mx.controls.advancedDataGridClasses.AdvancedDataGridItemRenderer;
+			import mx.controls.dataGridClasses.DataGridItemRenderer;
+			import mx.controls.listClasses.IListItemRenderer;
+			import mx.events.CloseEvent;
+			import mx.events.DragEvent;
+			import mx.events.ListEvent;
+			import mx.managers.DragManager;
+			import mx.managers.ToolTipManager;
+			
+			import spark.components.Label;
+			
+			private var taskOperator:TaskOperator;
+			
+			[Bindable]
+			private var _projects:ArrayCollection;
+			[Bindable]
+			private var _users:ArrayCollection;
+			
+			///
+			private var activeDate:ADGdateRenderer = new ADGdateRenderer();
+			
+			
+			private var tasks:Array;
+			
+			private function init():void{				
+				tasksTable.contextMenu = setContextMenu(tasksTable);
+				tasksTable.addEventListener(MouseEvent.CONTEXT_MENU, onRightClick, false, 0, true);
+				
+				getUsers();
+				getProjects();
+				
+				ToolTipManager.toolTipClass = HTMLToolTip;				
+			}
+			
+			private function getMoveTasks():void{
+				var param:Object = {};
+				if(user.selectedIndex <= 0 && project.selectedIndex <= 0){
+					Alert.show( "Выберите пользователя или проект", "Ошибка" )
+					return;
+				}
+				if(user.selectedIndex > 0)
+					param.id_staff_worker = user.selectedItem.id_staff;
+				if(project.selectedIndex > 0)
+					param.id_project = project.selectedItem.id_project;
+				
+				Remote.setRequest("Tasks", this, "getMoveList", param); 
+			}
+			public function Tasks_getMoveListResult(result:Object):void{
+				var res:Array = result.data as Array;
+				if(res.length==0){
+					Alert.show( "Задач нет", ":(" );
+					tasksTable.dataProvider = new ArrayCollection();
+					return;
+				}
+				this.title = "Задачи ("+ res.length+")";
+				taskOperator = new TaskOperator(res);
+				tasks = taskOperator.getTasks();	
+				tasksTable.dataProvider = new HierarchicalData(tasks);
+				callLater(function():void{tasksTable.expandAll();});
+			}			
+			
+			private function getUsers(param:Object = null):void{
+				Remote.setRequest("Users", this, "getLiteList", param);	
+			}
+			public function Users_getLiteListResult(result:Object):void{
+				var res:Array = result.data as Array;
+				_users = new ArrayCollection(Func.insertBlankItem2(res, "name_second"));
+			}			
+			
+			private function getProjects(param:Object = null):void{
+				Remote.setRequest("Projects", this, "getLiteList", param);	
+			}
+			public function Projects_getLiteListResult(result:Object):void{
+				var res:Array = result.data as Array;
+				_projects = new ArrayCollection(Func.insertBlankItem2(res, "name"));
+			}
+			
+			
+			
+			protected function myADG_itemClickHandler(event:ListEvent):void{
+				var item:Object = myAdvancedDataGrid(event.currentTarget).selectedItem;
+				event.target.expandItem(item, !event.target.isItemOpen(item), true);
+			}
+			
+			private function setContextMenu(par:Object):ContextMenu{	
+				var cm:ContextMenu = new ContextMenu();
+				var show:NativeMenuItem = new NativeMenuItem("Просмотр");
+				show.addEventListener(Event.SELECT, function():void{showTask(par)});
+				var edit:NativeMenuItem = new NativeMenuItem("Редактировать");
+				edit.addEventListener(Event.SELECT, function():void{editTask(par)});
+				var del:NativeMenuItem = new NativeMenuItem("Удалить");
+				del.addEventListener(Event.SELECT, function():void{delTaskQuest(par)})
+				var copy:NativeMenuItem = new NativeMenuItem("Копировать");
+				copy.addEventListener(Event.SELECT, function():void{copyTask(par)});
+				var today:NativeMenuItem = new NativeMenuItem("Сегодня");
+				today.addEventListener(Event.SELECT, function():void{moveToday(par)})
+				var add:NativeMenuItem = new NativeMenuItem("Новая задача");
+				add.addEventListener(Event.SELECT, function():void{addTask()});
+				cm.items = [show, edit, del, Func.getMenuSeparator(), today, Func.getMenuSeparator(), copy, Func.getMenuSeparator(), add];	
+				return cm;
+			}
+			
+			private function delTaskQuest(par:Object):void{	
+				var item:Object = par.selectedItem;
+				Alert.noLabel = "Нет";
+				Alert.yesLabel = "Да";
+				var a:Alert = Alert.show("Удалить задачу "+item.id_task+" ?", "Вопрос", Alert.YES | Alert.NO, null, delUserAlertListener);				
+				//a.width = 220;
+				
+				function delUserAlertListener(e:CloseEvent):void{
+					if (e.detail == Alert.YES) {
+						//Alert.show("Стереть воспоминания?", "Контрольный вопрос", Alert.YES | Alert.NO);
+						delTask(item.id_task);
+					}
+				}
+			}
+			
+			private function delTask(id:String):void{
+				Remote.setRequest("Tasks", this, "delete", null, id);
+			}			
+			public function Tasks_deleteResult(result:Object):void{
+				if(result.data && result.data["delete"])
+					getMoveTasks();
+				else{
+					
+				}
+			}
+			
+			private function showTask(par:Object):void{
+				var item:Object = par.selectedItem;
+				var winTitle:String;
+				winTitle = "Редактирование задачи: " + item.id_task;
+				WinManager.addWin("TaskCard", item, winTitle);
+			}			
+			
+			private function editTask(par:Object):void{
+				var item:Object = par.selectedItem;
+				var winTitle:String;
+				winTitle = "Редактирование задачи: " + item.id_task;
+				WinManager.addWin("Task", item, winTitle);
+			}
+			
+			private function addTask():void{
+				var winTitle:String;
+				winTitle = "Добавление задачи";
+				WinManager.addWin("Task", null, winTitle);
+			}
+			
+			private function moveToday(par:Object):void{
+				var item:Object = par.selectedItem;
+				Remote.setRequest("Tasks", this, "move", {date_plan_start:Func.getMySQLDate(new Date()), id_task_prev:0}, [item.id_task]); 
+			}	
+			
+			private function copyTask(par:Object):void{
+				var item:Object = par.selectedItem;
+				System.setClipboard(item.project_name+": "+item.name);
+			}
+			
+			private function onRightClick(e:MouseEvent):void{	
+				if(e.target is Label){
+					return;
+				}
+				
+				var r:*;
+				if(getQualifiedClassName(e.currentTarget)=="mx.controls::AdvancedDataGrid" || getQualifiedClassName(e.currentTarget)=="components.utils::myAdvancedDataGrid")
+					r = e.target as AdvancedDataGridItemRenderer; 
+				else
+					r = e.target as DataGridItemRenderer;
+				
+				
+				if(r == null)
+					return;
+				var selectedIndex:int = e.currentTarget.itemRendererToIndex(r); 
+				e.currentTarget.selectedIndex = selectedIndex;
+				e.currentTarget.setStyle("rollOverColor", undefined);				
+			}
+			
+			private function showTooltip(item:Object):String{
+				var tip:String = "";
+				if(!item.hasOwnProperty("dsc"))
+					return "";
+				if(item != null){
+					tip = item.dsc;
+				}
+				return tip;
+			}
+			
+			private function removeEmpty():void{
+				var newTasks:Array = [];
+				for (var i:int=0; i<tasks.length; i++){
+					if(tasks[i].children.length==0 && !tasks[i].future)
+						continue;
+					newTasks.push(tasks[i]);						
+				}
+				tasks = newTasks;
+				tasksTable.dataProvider = new HierarchicalData(tasks);
+			//	callLater(function():void{tasksTable.expandAll();});				
+			}
+			
+			private function onItemDoubleClick(event:ListEvent):void{
+				if(!(event.itemRenderer is ADGdateRenderer))
+					showTask(event.currentTarget);
+			}
+			
+	/////////////////////////////////////////////////////////////////		
+
+			private var dragItems:Array;
+			
+			/**
+			 *	Переносим только задачи
+			 *  
+			 */
+			private function onDragStart(event:DragEvent):void{	
+			//	trace("onDragStart")
+				try {
+					var index:int = tasksTable.calculateDropIndex(event);
+				} catch(e:Error) {
+					DragManager.showFeedback(DragManager.NONE);
+					return;
+				}
+				var dropTargetItemRenderer:IListItemRenderer =  tasksTable.indexToItemRenderer(index);
+				if(dropTargetItemRenderer is ADGdateRenderer)
+					event.preventDefault();
+			}	
+			
+			/**
+			 * 	Массив переносимых задач
+			 * 
+			 */ 
+			private function onDragDrop(event:DragEvent):void{	
+				dragItems = event.dragSource.dataForFormat("treeDataGridItems") as Array; 
+			}			
+			
+			/**
+			 * 	Поиск дня для переноса задач
+			 * 	Если itemRenderer == ADGdateRenderer
+			 * 	подсветка
+			 * 
+			 */ 
+			protected function onDragOver(event:DragEvent):void {			
+				try {
+					var index:int = tasksTable.calculateDropIndex(event);
+				//	DragManager.showFeedback(DragManager.MOVE);
+				} catch(e:Error) {
+					DragManager.showFeedback(DragManager.NONE);
+					return;
+				}
+				
+				
+				var dropTargetItemRenderer:IListItemRenderer;
+				for(var i:int = index; i>=0; i--){
+					dropTargetItemRenderer = tasksTable.indexToItemRenderer(i);
+					if(dropTargetItemRenderer == null)
+						continue;
+					if(dropTargetItemRenderer is ADGdateRenderer){
+			/*			(ADGdateRenderer)(dropTargetItemRenderer).addTask = true;						
+						activeDate = dropTargetItemRenderer;
+			*/			
+						(ADGdateRenderer)(activeDate).highLight(false);
+						activeDate = dropTargetItemRenderer as ADGdateRenderer;
+						(ADGdateRenderer)(activeDate).highLight(true);						
+						break;
+					}
+				}
+			}
+			
+			protected function onDragComplete(event:DragEvent):void {		
+		//		removeEmpty();
+								
+				var taskIds:Array = [];
+				var str:String = ""; 
+				var ind:int = tasksTable.getChildIndexInParent(tasksTable.finalParent, dragItems[0]);
+				var preTask:Object = tasksTable.getIndexItem(tasksTable.getItemIndex(dragItems[0]) - (dragItems.length+1));
+				for (var i:Number = 0; i < dragItems.length; i++) { 
+					taskIds.push(dragItems[i].id_task);
+					str += dragItems[i].id_task+" ";
+				}
+				var preTaskId:String = (preTask && preTask.hasOwnProperty("id_task"))?preTask.id_task:"0";
+				trace(activeDate.data.day, preTaskId, str)
+				Remote.setRequest("Tasks", this, "move", {date_plan_start:activeDate.data.day, id_task_prev:preTaskId}, taskIds); 
+			}
+			
+			public function Tasks_moveResult(res:Object):void{
+				getMoveTasks();
+				trace("updating")
+			}
+			
+
+			
+		]]>
+	</fx:Script>
+	
+	<s:VGroup width="100%" height="100%">
+		<utils:TitleGroup title="Фильтр" horizontalCenter="0" top="0" height="72" width="100%">
+			<s:HGroup width="100%" height="100%" verticalAlign="middle">
+				<s:Label text="Сотрудник"/>
+				<utils:UserDropDownList id="user" width="180" dataProvider="{_users}" labelFunction="Func.myNameLabelFunction"/>
+				<s:Label text="Проект"/>
+				<mx:VRule height="23"/>
+				<s:ComboBox id="project" width="180" dataProvider="{_projects}" labelField="name"/>
+				<mx:VRule height="25"/>
+				<s:Button label="OK" click="getMoveTasks()"/>
+				<s:HGroup alpha="0.6">
+					<s:Button label="&gt;&lt;" toolTip="Свернуть" width="35" fontFamily="Courier New" click="{tasksTable.collapseAll()}"/>
+					<s:Button label="&lt;&gt;" toolTip="Развернуть" width="35" fontFamily="Courier New" click="{tasksTable.expandAll()}"/>
+				</s:HGroup>
+			</s:HGroup>
+		</utils:TitleGroup>
+		<utils:myAdvancedDataGrid dragEnabled="true" dragMoveEnabled="true" dropEnabled="true"
+								 id="tasksTable" dataTipFunction="showTooltip" allowMultipleSelection="true"
+								 variableRowHeight="true" itemClick="myADG_itemClickHandler(event)"
+								 wordWrap="true" width="100%" height="100%" dropIndicatorSkin="components.utils.skins.CustomDropIndicatorListSkin"
+								 dragOver="onDragOver(event)" itemDoubleClick="onItemDoubleClick(event)"
+								 dragStart="onDragStart(event)"
+								 dragDrop = "onDragDrop(event)"
+								 dragComplete="onDragComplete(event)"
+								 >
+			<utils:columns>
+				<mx:AdvancedDataGridColumn headerText="" width="0" 
+										   minWidth="0"											    
+										   dataField="date"/>
+				<mx:AdvancedDataGridColumn headerText="#" width="25"
+										   dataField="num"/>
+				<mx:AdvancedDataGridColumn headerText="#" width="45"
+										   dataField="id_task"/>
+				<mx:AdvancedDataGridColumn headerText="Проект"
+										   dataField="id_project_text" width="140" showDataTips="true"/>
+				<mx:AdvancedDataGridColumn headerText="Задача" showDataTips="true"
+										   dataField="name"/>
+				<mx:AdvancedDataGridColumn headerText="Статус" id="statusCol"
+										   dataField="status" width="120"/>
+				<mx:AdvancedDataGridColumn headerText="Выполнил"
+										   dataField="id_staff_worker_text" width="90"/>
+				<mx:AdvancedDataGridColumn headerText="Поставил"
+										   dataField="id_staff_owner_text" width="90"/>
+				<mx:AdvancedDataGridColumn headerText="Контроль"
+										   dataField="id_staff_accepter_text" width="80"/>
+				<mx:AdvancedDataGridColumn dataField="comments_count" 
+										   headerText="Комментарии" width="110"/>
+			</utils:columns>
+			<utils:rendererProviders>            
+				<mx:AdvancedDataGridRendererProvider 
+					dataField="date" 						
+					renderer="components.utils.renderers.ADGdateRenderer"
+					columnIndex="0" 
+					columnSpan="0"/> 
+				<mx:AdvancedDataGridRendererProvider column="{statusCol}" depth="2" renderer="components.utils.renderers.TaskStatusRenderer"/>
+			</utils:rendererProviders>
+			
+		</utils:myAdvancedDataGrid>			
+	</s:VGroup>	
+</containers:MDIWindow>

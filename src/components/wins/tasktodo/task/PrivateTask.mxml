@@ -1,0 +1,242 @@
+<?xml version="1.0" encoding="utf-8"?>
+<containers:MDIWindow xmlns:fx="http://ns.adobe.com/mxml/2009" 
+					  xmlns:s="library://ns.adobe.com/flex/spark" 
+					  xmlns:mx="library://ns.adobe.com/flex/mx" 
+					  layout="absolute" 
+					  initialize="init()" minWidth="480" minHeight="550" creationComplete="onCreationComplete()" 
+					  xmlns:utils="components.utils.*" xmlns:containers="flexmdi.containers.*" xmlns:validators="components.utils.validators.*" xmlns:additions="components.wins.tasktodo.calendar.additions.*">
+	<fx:Declarations>
+	
+		<mx:StringValidator id="val_task_name" source="{task_name}" property="text" minLength="2" tooShortError="Чо за название?" requiredFieldError="Заполни название"/>
+		<!--<validators:SugComboValidator id="val_task_name" source="{task_name}" property="text" />-->
+
+		
+
+	</fx:Declarations>
+	
+<fx:Script>
+		<![CDATA[
+			import classes.Remote;
+			import classes.WinManager;
+			
+			import components.utils.Func;
+			
+			import flash.filesystem.File;
+			
+			import mx.collections.ArrayCollection;
+			import mx.controls.Alert;
+			import mx.events.ValidationResultEvent;
+			import mx.utils.ObjectProxy;
+			import mx.validators.Validator;
+			
+			import spark.components.ComboBox;
+			import spark.components.DropDownList;
+			import spark.components.TextInput;
+			import spark.events.IndexChangeEvent;
+			
+			
+			private var edit:Boolean = false;
+			
+			[Bindable]
+			private var _data:ObjectProxy;
+			
+			private var fileArray:Array = [];
+			private var tempFile:Object;
+			
+			[Bindable]
+			private var addButton_label:String = "Добавить";
+			
+			[Bindable]
+			private var validatorArray:Array;
+			
+			[Bindable]
+			private var users:ArrayCollection;
+			
+			
+			private var repeatDataId:Array = [];
+			
+			private function init():void{
+				validatorArray = [val_task_name];
+			}		
+
+			private function getProjects(param:Object = null):void{
+				Remote.setRequest("Projects", this, "getLiteList", param);	
+			}
+			public function Projects_getLiteListResult(result:Object):void{
+				var projectsData:ArrayCollection = new ArrayCollection(result.data as Array);
+				id_project.dataProvider = projectsData;
+				if(_data != null)
+					id_project.selectedIndex = Func.getProviderIndex(projectsData, "id_project", _data.id_project)
+				else if(Globals.taskRepeatData != null)
+					id_project.selectedIndex = Globals.taskRepeatData["id_project"];
+			}
+
+
+			private function onCreationComplete():void{
+				if(_data == null && Globals.taskRepeatData){
+					for(var nameEl:String in Globals.taskRepeatData){
+						var el:* = this[nameEl];
+	
+						if(el is TextInput || el is DateField)
+							el.text = Globals.taskRepeatData[nameEl];
+						else if(el is DropDownList || el is ComboBox || el is myCombo)
+							el.selectedIndex = Globals.taskRepeatData[nameEl];
+						else if(el is CheckBox)
+							el.selected = Globals.taskRepeatData[nameEl];					
+					}
+				}
+			}
+			
+			private function setDefaultData():void{
+				urgency.selected = false;
+				date_plan_start.text = (_data==null)?Func.getMySQLDate2(new Date()):Func.convertStringDate(_data.date_plan_start);
+			}
+			
+			override public function set data(d:Object):void{
+				if(d == null){
+					title = "Новая задача";
+					return;
+				}
+				edit = true;
+				addButton_label = "Редактировать";
+				_data = new ObjectProxy(d);
+				Remote.setRequest("PrivateTask", this, "getEdit", null, d.id_private_task);				
+			}	
+
+			public function PrivateTask_getEditResult(result:Object):void{
+				_data = new ObjectProxy(result.data[0]);
+			}
+		
+			private function cancell():void{
+				WinManager.close_open(this);
+			}
+			
+			private function dscFocusOut(event:FocusEvent):void{
+				var txt:String = (String)(event.currentTarget.plain_text);
+				var n:Number = 60;
+				n = (txt.search("\n") > 0) ? txt.search("\n"):n;
+				if(this.task_name.text == ''){
+					this.task_name.text = txt.substr(0, n);
+				}
+			}
+			
+			private function addTask():void{
+				
+				var validatorErrorArray:Array = Validator.validateAll(validatorArray);;
+				var isValidForm:Boolean = validatorErrorArray.length == 0;
+				if (!isValidForm)  {
+					var err:ValidationResultEvent;
+					var errorMessageArray:Array = [];
+					for each (err in validatorErrorArray) {
+						var errField:String = err.currentTarget.source.name;
+						errorMessageArray.push("'"+errField + "' - обязательное поле"/* + err.message*/);
+					}
+					Alert.show(errorMessageArray.join("\n"), "Форма не заполнена...", Alert.OK);
+					return;
+				}
+								
+				var param:Object = {};				
+				param = Func.showInputs(mainParams, param);
+				
+				if(!edit){
+					Globals.privateTaskRepeatData = {};
+					for(var i:int = 0; i<repeatDataId.length; i++){
+						var val:*;
+						var el:* = this[repeatDataId[i]];
+						if(el is TextInput || el is DateField)
+							val = el.text;
+						else if(el is DropDownList || el is ComboBox || el is myCombo)
+							val = el.selectedIndex; 
+						else if(el is CheckBox)
+							val = el.selected;
+						
+						Globals.privateTaskRepeatData[repeatDataId[i]] = val;
+					}
+				}
+				
+				param.remind_datetime = Func.convertStringDate(param.remind_date)+" "+param.remind_time;
+				
+				if(edit)
+					Remote.setRequest("PrivateTask", this, "edit", param, _data.id_private_task);
+				else
+					Remote.setRequest("PrivateTask", this, "add", param);
+			}
+			public function PrivateTask_addResult(res:Object):void{
+				if(res.data.add){
+					WinManager.close_open(this);
+				}
+			}
+			public function PrivateTask_editResult(res:Object):void{
+				if(res.data.edit){
+					WinManager.close_open(this, "PrivateTaskCard", {id_private_task:_data.id_private_task});
+				}
+			}
+			
+			private function onPushEnter(e:KeyboardEvent):void{		///костыль
+				if(e.keyCode==13){
+					trace(e.currentTarget.id)
+					switch(e.currentTarget.id){
+						case "id_project" :	task_name.setFocus();
+											break;
+						case "task_name"  : dsc.setFocus();
+											break;
+					}
+				}
+			}
+			
+
+
+						
+			private function onResizeEditor(event:Event):void{
+				width = event.currentTarget.width + 180;
+				height = event.currentTarget.height + 295;
+			}
+
+		]]>
+	</fx:Script>
+	
+	<mx:Canvas bottom="10" width="100%">
+		<s:Button tabIndex="9" label="{addButton_label}" id="addButton" horizontalCenter="-117" click="addTask()"/>
+		<s:Button tabIndex="10" label="Отмена" click="cancell()" horizontalCenter="117"/>
+		<s:Button horizontalCenter="0" label="Сбросить" click="setDefaultData()"/>
+	</mx:Canvas>
+		
+						
+	<s:VGroup width="100%" id="mainParams" top="0" bottom="20" gap="0" horizontalAlign="center">
+		<utils:TitleGroup width="100%" top="0" title="Задача" right="0" left="0">
+				<s:VGroup width="100%" height="100%">
+					<s:HGroup width="100%" verticalAlign="middle">
+						<s:Label text="Проект" width="130" textAlign="right"/>
+						<!--<s:ComboBox keyUp="onPushEnter(event)" name="Проект" labelField="name" id="id_project" creationComplete="getProjects()" width="70%"/>-->
+						<utils:myCombo tabIndex="1" keyUp="onPushEnter(event)" name="Проект" labelField="name" id="id_project" creationComplete="getProjects()" width="100%"/>
+					</s:HGroup>
+					<s:HGroup width="100%" verticalAlign="middle">
+						<s:Label text="Задача" width="130" textAlign="right"/>
+						<utils:SugInput tabIndex="2" keyUp="onPushEnter(event)" text="{_data.name}" sugtext="{_data.name}" name="Задача" id="task_name" width="100%"  fontWeight="bold"/>
+					</s:HGroup>
+					<s:HGroup width="100%" height="100%" verticalAlign="top">
+						<s:Label text="Текст" width="130" textAlign="right"/>
+						<utils:CustomEditor tabIndex="3" focusOut="dscFocusOut(event)" minHeight="268" minWidth="300" resizeEditor="onResizeEditor(event)" width="100%" id="dsc" text ="{_data.dsc}"/>
+					</s:HGroup>
+					<s:HGroup width="100%" verticalAlign="middle">
+						<mx:Spacer width="130"/>
+						<s:CheckBox tabIndex="4" label="Важная" width="100%" id="urgency" selected="{_data.urgency == 1}"/>
+					</s:HGroup>
+					<s:HGroup width="100%" verticalAlign="middle">
+						<s:Label text="Дата" width="130" textAlign="right"/>
+						<mx:DateField tabIndex="5" id="date_plan_start" text="{(_data==null)?Func.getMySQLDate2(new Date()):Func.convertStringDate(_data.date_plan_start)}" monthNames="{Globals.months}" dayNames="{Globals.days}" width="100%" x="92" formatString="DD-MM-YYYY" firstDayOfWeek="1"/>
+					</s:HGroup>
+				</s:VGroup>
+		</utils:TitleGroup>
+		<utils:TitleGroup title="Опции" width="100%">
+			<s:VGroup width="100%" height="100%">				
+				<s:HGroup width="100%" verticalAlign="middle">
+					<s:CheckBox tabIndex="6" label="Напомнить" width="130" id="remind" selected="{_data.remind == 1}"/>
+					<additions:timeInput tabIndex="7" id="remind_time" enabled="{remind.selected}" time="{(_data==null)?'':Func.convertStringDateTime(_data.remind_datetime, false, true)}"/>
+					<mx:DateField tabIndex="8" id="remind_date" enabled="{remind.selected}" text="{(_data==null || _data.remind_datetime=='')?Func.getMySQLDate2(new Date()):Func.convertStringDateTime(_data.remind_datetime, true)}" monthNames="{Globals.months}" dayNames="{Globals.days}" width="100%" x="92" formatString="DD-MM-YYYY" firstDayOfWeek="1"/>
+				</s:HGroup>
+			</s:VGroup>
+		</utils:TitleGroup>						
+	</s:VGroup>
+			
+</containers:MDIWindow>

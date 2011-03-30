@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:MXAdvancedDataGridItemRenderer xmlns:fx="http://ns.adobe.com/mxml/2009" 
+								  xmlns:s="library://ns.adobe.com/flex/spark" 
+								  xmlns:mx="library://ns.adobe.com/flex/mx" 
+								  focusEnabled="true" width="100%" height="22">
+	<fx:Style>
+		@namespace s "library://ns.adobe.com/flex/spark";
+		@namespace mx "library://ns.adobe.com/flex/mx";
+		
+		.callabel, .callabel2{
+			verticalAlign: middle;
+			paddingTop: 2;
+			verticalCenter: 0;
+			color: #000000;
+		}
+		.callabel2{
+			color: #ff0000;
+		}
+	</fx:Style>
+	
+	<fx:Script>
+		<![CDATA[
+			import mx.controls.listClasses.BaseListData;
+			import mx.utils.ObjectProxy;
+			
+			[Bindable]
+			private var _data:ObjectProxy;
+			
+			public var day:String;
+			
+			
+			
+			public function highLight(b:Boolean = true):void{
+				if(b)
+					canvas.setStyle("backgroundColor", 0xbb99EF);
+				else
+					canvas.setStyle("backgroundColor", 0xD5DDDB);
+			}
+			
+			protected function lblData_rollOverHandler(event:MouseEvent):void{
+				event.target.setStyle("backgroundColor", 0xCEDBEF); 
+			}
+
+			protected function lblData_rollOutHandler(event:MouseEvent):void{
+				event.target.setStyle("backgroundColor", 0xffffff);
+			}
+			override public function set listData(value:BaseListData):void{
+				super.listData = value;
+				_data = new ObjectProxy(value).item;
+				
+				ln.text = (_data.children.length > 0) ? "("+_data.children.length+")" : "";
+			}
+			override protected function updateDisplayList(w:Number, h:Number):void{
+				super.updateDisplayList(w, h);
+		//		canvas.setStyle("backgroundColor", 0xD5DDDB);
+			}
+		]]>
+	</fx:Script>
+
+	<mx:Canvas width="100%" height="100%" id="canvas"
+			 color="{_data.date.colord}" backgroundColor="{_data.date.color}">
+		<s:Label id="ln" right="10" height="100%" styleName="callabel"/>		
+		
+		<s:HGroup height="100%" paddingLeft="10" textAlign="center">
+			<s:Label text="{_data.date.name}" 
+					 height="100%" styleName="callabel"/>
+			<s:Label text="{_data.date.total}" 
+					 height="100%" styleName="callabel2"/>			
+		</s:HGroup>
+	</mx:Canvas>
+</s:MXAdvancedDataGridItemRenderer>

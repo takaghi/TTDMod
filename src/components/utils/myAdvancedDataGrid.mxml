@@ -1,0 +1,321 @@
+<?xml version="1.0" encoding="utf-8"?>
+<mx:AdvancedDataGrid xmlns:fx="http://ns.adobe.com/mxml/2009" 
+					 xmlns:s="library://ns.adobe.com/flex/spark" 
+					 xmlns:mx="library://ns.adobe.com/flex/mx">
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+	
+	<fx:Script>
+		<![CDATA[
+			import mx.collections.ICollectionView;
+			import mx.collections.IViewCursor;
+			import mx.core.EdgeMetrics;
+			import mx.core.mx_internal;
+			import mx.events.DragEvent;
+			import mx.managers.DragManager;
+			
+			use namespace mx_internal;
+			
+			private var _dropData:Object;
+			
+			
+			override public function showDropFeedback(event:DragEvent):void	{
+								
+				super.showDropFeedback(event);
+				// Adjust for indent
+				var vm:EdgeMetrics = viewMetrics;
+				var offset:int = 0;
+				updateDropData(event);
+				var indent:int = 0;
+				var depth:int;
+
+				offset = getItemIndex(iterator.current);
+				depth = getItemDepth(_dropData.parent, Math.abs(offset - getItemIndex(_dropData.parent)));
+				indent = (depth + 1) * getStyle("indentation");
+
+				if (indent < 0)
+					indent = 0;
+				//position drop indicator
+				dropIndicator.width = listContent.width - indent;
+				dropIndicator.x = indent + vm.left + 2;
+				if (_dropData.emptyFolder){
+					dropIndicator.y += _dropData.rowHeight / 2;
+				}
+			}
+			
+			/**
+			 *  @private
+			 */
+			private function updateDropData(event:DragEvent):void{
+				var rowCount:int = rowInfo.length;
+				var rowNum:int = 0;
+				// we need to take care of headerHeight
+				var yy:int = rowInfo[rowNum].height + (headerVisible ? headerHeight :0);
+				var pt:Point = globalToLocal(new Point(event.stageX, event.stageY));
+				while (rowInfo[rowNum] && pt.y >= yy)
+				{
+					if (rowNum != rowInfo.length-1)
+					{
+						rowNum++;
+						yy += rowInfo[rowNum].height;
+					}
+					else
+					{
+						// now we're past all rows.  adding a pixel or two should be enough.
+						// at this point yOffset doesn't really matter b/c we're past all elements
+						// but might as well try to keep it somewhat correct
+						yy += rowInfo[rowNum].height;
+						rowNum++;
+					}
+				}
+				var lastRowY:Number = rowNum < rowInfo.length ? rowInfo[rowNum].y : (rowInfo[rowNum-1].y + rowInfo[rowNum-1].height);
+				var yOffset:Number = pt.y - lastRowY;
+				var rowHeight:Number = rowNum < rowInfo.length ? rowInfo[rowNum].height : rowInfo[rowNum-1].height;  //rowInfo[rowNum].height;
+				rowNum += verticalScrollPosition;
+				
+				var parent:Object;
+				var index:int;
+				var emptyFolder:Boolean = false;
+				var numItems:int = collection.length;
+				
+				var topItem:Object = (rowNum > _verticalScrollPosition && rowNum <= numItems) ?
+					listItems[rowNum - _verticalScrollPosition - 1][0].data : null;
+				var bottomItem:Object = (rowNum - verticalScrollPosition < rowInfo.length && rowNum < numItems) ? 
+					listItems[rowNum - _verticalScrollPosition][0].data  : null;
+				
+				var topParent:Object = getParentItem(topItem);
+				var bottomParent:Object = getParentItem(bottomItem);
+				
+				var test:Number = 0;
+				// check their relationship
+				if (yOffset > rowHeight * .5 && 
+					isItemOpen(bottomItem) &&
+					_rootModel.canHaveChildren(bottomItem) &&
+					!_rootModel.hasChildren(bottomItem))
+				{
+					// we'll get here if we're dropping into an empty folder.
+					// we have to be in the lower 50% of the row, otherwise
+					// we're "between" rows.
+					parent = bottomItem;
+					index = 0;
+					emptyFolder = true;												//trace("000", parent)
+				}
+				else if (!topItem && !rowNum == rowCount)
+				{
+					parent = getParentItem(bottomItem);											test = 1;
+					index =  bottomItem ? getChildIndexInParent(parent, bottomItem) : 0;
+					rowNum = 0;
+				}
+				else if (bottomItem && bottomParent == topItem){
+										// we're dropping in the first item of a folder, that's an easy one
+					parent = (topItem!=null) ? topItem : bottomItem;							test = 2;
+					index = 0;
+				}
+				else if (topItem && bottomItem && topParent == bottomParent)
+				{
+					parent = topParent;															test = 3
+					index = getChildIndexInParent(parent, bottomItem);
+				}
+				else
+				{
+					//we're dropping at the end of a folder.  Pay attention to the position.
+					if (topItem && (yOffset < (rowHeight * .5))){
+						// ok, we're on the top half of the bottomItem.
+						parent = (topParent!=null)?topParent:topItem;							test = 4;
+						index = getChildIndexInParent(parent, topItem) + 1; // insert after
+					}
+					else if (!bottomItem){					
+						if ((rowNum - verticalScrollPosition) == 0){
+							parent = topParent;
+							index = 0;															test = 5;
+						}
+						else if (collection){
+							parent = (bottomParent!=null) ? bottomParent:topItem;
+							index = 0;
+						}
+						else index = 0;															test = 51;
+					}
+					else
+					{
+						parent = bottomParent;													test = 6;
+						index = getChildIndexInParent(parent, bottomItem);	
+					}
+				}
+		//		trace("test:",test , parent, index, event.localY, emptyFolder, rowHeight, rowNum);
+				_dropData = { parent: parent, index: index, localX: event.localX, localY: event.localY, 
+					emptyFolder: emptyFolder, rowHeight: rowHeight, rowIndex: rowNum };
+			}
+			
+			/**
+			 *  @private
+			 */
+			override public function calculateDropIndex(event:DragEvent = null):int	{
+				if (event){	
+					updateDropData(event);
+			//		if(_dropData.rowIndex==0)
+			//			return 1;
+					return _dropData.rowIndex;
+				}
+				return super.calculateDropIndex(event);
+			}
+			
+			public var finalParent:Object;
+			
+			override protected function dragDropHandler(event:DragEvent):void{			
+				// Drag-and-drop not supported for cells
+				if (isCellSelectionMode())
+					return;
+				
+				if (event.isDefaultPrevented())
+					return;
+				
+				hideDropFeedback(event);
+				if (_dropData.parent==null)
+					return;
+				finalParent = _dropData.parent
+				
+				//we only support MOVE by default
+				if (event.action == DragManager.MOVE && dragMoveEnabled)
+				{
+					var items:Array = event.dragSource.dataForFormat("treeDataGridItems") as Array;
+					//Are we dropping on ourselves?
+					if (event.dragInitiator == this){
+						// If we're dropping onto ourselves or a child of a descendant then dont actually drop
+						
+						calculateDropIndex(event);
+						
+						// If we did start this drag op then we need to remove first
+						var index:int;
+						var parent:*;
+						var parentItem:*;
+						//get ancestors of the drop target item
+						var dropParentStack:Array = getParentStack(_dropData.parent);
+						dropParentStack.unshift(_dropData.parent); //optimize stack method
+						var n:int = items.length;
+						for (var i:int = 0; i < n; i++) { 
+							parent = getParentItem(items[i]);
+							index = getChildIndexInParent(parent, items[i]);
+							//check ancestors of the dropTarget if the item matches, we're invalid
+							for each (parentItem in dropParentStack){ 
+								//we dont want to drop into one of our own sets of children
+								if (items[i] == parentItem)
+									return;
+							}
+							//we remove before we add due to the behavior 
+							//of structures with parent pointers like e4x
+							removeChildItem(parent, items[i], index);
+							//is the removed item before the drop location?
+							if (parent == _dropData.parent && index < _dropData.index) {
+								addChildItem(_dropData.parent, items[i], (_dropData.index - i - 1));
+							}
+							else {
+								addChildItem(_dropData.parent, items[i], _dropData.index);
+							}
+						}
+					}
+				}
+				lastDragEvent = null;
+			}
+			
+			/**
+			 *  @private
+			 *  Returns the stack of parents from a child item. 
+			 */
+			private function getParentStack(item:Object):Array
+			{
+				var stack:Array = [];
+				if (item == null)
+					return stack;
+				
+				var parent:* = getParentItem(item);
+				while (parent)
+				{
+					stack.push(parent);
+					parent = getParentItem(parent);
+				}
+				return stack;       
+			}
+			
+			/**
+			 *  @private
+			 */
+			public function getItemIndex(item:Object):int
+			{
+				var cursor:IViewCursor = collection.createCursor();
+				var i:int = 0;
+				do
+				{
+					if (cursor.current === item)
+						break;
+					i++;
+				}
+				while (cursor.moveNext());
+				return i;
+			}
+			
+			/**
+			 *  @private
+			 */
+			public function getIndexItem(index:int):Object
+			{
+				var cursor:IViewCursor = collection.createCursor();
+				var i:int = index;
+				while (cursor.moveNext())
+				{
+					if (i == 0)
+						return cursor.current;
+					i--;
+				}
+				return null;
+			}
+			
+			
+			
+			/**
+			 *  @private
+			 *  Finds the index distance between a parent and child
+			 */
+			public function getChildIndexInParent(parent:Object, child:Object):int
+			{
+				var index:int = 0;
+				if (!parent)
+				{
+					var cursor:IViewCursor = ICollectionView(iterator.view).createCursor();
+					while (!cursor.afterLast)
+					{
+						if (child === cursor.current)
+							break;
+						index++;
+						cursor.moveNext();
+					}
+				}
+				else
+				{
+					if (parent != null && 
+						_rootModel.canHaveChildren(parent) &&
+						_rootModel.hasChildren(parent))
+					{
+						var children:ICollectionView = getChildren(parent, iterator.view);
+						if (children.contains(child))
+						{
+							var n:int = children.length;
+							for (; index < n; index++)
+							{
+								if (child === children[index])
+									break;
+							}
+						}
+						else 
+						{
+							//throw new Error("Parent item does not contain specified child: " + itemToUID(child));
+						}
+					}
+				}
+				return index;
+			}
+			
+		]]>
+	</fx:Script>
+	
+</mx:AdvancedDataGrid>

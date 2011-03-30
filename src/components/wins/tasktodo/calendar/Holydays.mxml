@@ -1,0 +1,124 @@
+<?xml version="1.0" encoding="utf-8"?>
+<containers:MDIWindow xmlns:fx="http://ns.adobe.com/mxml/2009" 
+					  xmlns:s="library://ns.adobe.com/flex/spark" 
+					  xmlns:mx="library://ns.adobe.com/flex/mx" 
+					  xmlns:containers="flexmdi.containers.*" 
+					  title="Праздники"
+					  layout="absolute" width="100%" height="100%" initialize="init()" 
+					  xmlns:utils="components.utils.*" xmlns:footerDataGrid="components.utils.footerDataGrid.*">
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+
+	
+	<fx:Script>
+		<![CDATA[
+			import classes.Remote;
+			
+			import components.utils.Func;
+			
+			import mx.collections.ArrayCollection;
+			import mx.controls.Alert;
+			import mx.controls.listClasses.IListItemRenderer;
+			import mx.events.CloseEvent;
+			
+			[Bindable]
+			private var _data:ArrayCollection;
+						
+			[Bindable]
+			private var _months:ArrayCollection;
+			
+			[Bindable]
+			private var _list:ArrayCollection;
+			
+			
+			private function init():void{				
+				getList();
+			}	
+			
+			private function getList(param:Boolean = false):void{
+				Remote.setRequest("Holidays", this, "getList");
+			}
+			public function Holidays_getListResult(result:Object):void{
+				_list= new ArrayCollection(result.data as Array);
+			}
+			
+			private function onRightClick(e:MouseEvent):void{				
+				if(!(e.target is IListItemRenderer))
+					return;
+				
+				var r:IListItemRenderer = e.target as IListItemRenderer; 
+				if(r == null)
+					return;
+				var selectedIndex:int = holidaysList.itemRendererToIndex(r); 
+				holidaysList.selectedIndex = selectedIndex;
+				holidaysList.setStyle("rollOverColor", undefined);			
+			}
+			
+			private function addContextMenu():void{				
+				var cm:ContextMenu = new ContextMenu();
+				var del:NativeMenuItem = new NativeMenuItem("Удалить");
+				del.addEventListener(Event.SELECT, function():void{delQuest()})
+				var items:Array = [del];	
+				cm.items = items;				
+				holidaysList.contextMenu = cm;
+			}
+			
+			private function delQuest():void{	
+				var h:Object = holidaysList.selectedItem;
+				Alert.noLabel = "Нет"; 
+				Alert.yesLabel = "Да";
+				var a:Alert = Alert.show("Удалить день: "+h.name+" ?", "Вопрос", Alert.YES | Alert.NO, null, delAlertListener);				
+				a.width = 220;
+				
+				function delAlertListener(e:CloseEvent):void{
+					if (e.detail == Alert.YES) {
+						//Alert.show("Стереть воспоминания?", "Контрольный вопрос", Alert.YES | Alert.NO);
+						delHoliday(h.id_holiday);
+					}
+				}
+			}
+			private function delHoliday(id:String):void{
+				Remote.setRequest("Holidays", this, "delete", null, id);
+			}
+			public function Holidays_deleteResult(result:Object):void{
+				if(result.data && result.data["delete"])
+					getList();
+			}
+			
+			private function add():void{
+				if(dsc.text!="")
+					Remote.setRequest("Holidays", this, "add", {date: date.text, name:dsc.text, is_workday:is_workday.selectedItem.is_workday});
+			}
+			public function Holidays_addResult(result:Object):void{
+				if(result.data && result.data["add"])
+					getList();
+			}
+		
+		]]>
+	</fx:Script>
+		
+		<mx:DataGrid width="100%" dataProvider="{_list}" 
+						  id="holidaysList" creationComplete="addContextMenu()"
+						  bottom="70" top="0" left="0" contextMenu="onRightClick(event)">
+			<mx:columns>
+				<mx:DataGridColumn width="80" headerText="Дата" dataField="date" />
+				<mx:DataGridColumn width="200" headerText="Комментарий" dataField="name" />              
+				<mx:DataGridColumn headerText="Добавил" dataField="n3" />                 
+			</mx:columns>
+		</mx:DataGrid>
+		
+		<utils:TitleGroup title="Добавить день" horizontalCenter="0" width="100%" bottom="0">
+			<s:VGroup width="100%">
+				<s:HGroup width="100%" height="100%" verticalAlign="middle">
+					<s:DropDownList id="is_workday" selectedIndex="0" dataProvider="{new ArrayCollection([{label:'Праздник', is_workday:0},{label:'Рабочий день', is_workday:1}])}" width="125"/>
+					<mx:DateField id="date" text="{Func.getMySQLDate2(new Date())}" monthNames="{Globals.months}" dayNames="{Globals.days}" 
+								  width="137" formatString="DD-MM-YYYY" firstDayOfWeek="1"/>
+					<s:TextInput id="dsc"/>
+					<s:Button label="Добавить" click="add()"/>
+				</s:HGroup>				
+			</s:VGroup>
+		</utils:TitleGroup>
+
+	
+</containers:MDIWindow>

@@ -1,0 +1,258 @@
+<?xml version="1.0" encoding="utf-8"?>
+<containers:MDIWindow xmlns:fx="http://ns.adobe.com/mxml/2009" 
+					  xmlns:s="library://ns.adobe.com/flex/spark" 
+					  xmlns:mx="library://ns.adobe.com/flex/mx" 
+					  xmlns:containers="flexmdi.containers.*" layout="absolute" 
+					  initialize="init()" 
+					  title="Поиск задач" xmlns:utils="components.utils.*" minWidth="832">
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+
+	<fx:Script>
+		<![CDATA[
+			import classes.Remote;
+			import classes.TaskOperator;
+			import classes.WinManager;
+			
+			import components.utils.Func;
+			import components.utils.HTMLToolTip;
+			import components.utils.renderers.ADGdateRenderer;
+			
+			import mx.collections.ArrayCollection;
+			import mx.collections.HierarchicalData;
+			import mx.controls.Alert;
+			import mx.controls.advancedDataGridClasses.AdvancedDataGridItemRenderer;
+			import mx.controls.dataGridClasses.DataGridItemRenderer;
+			import mx.events.FlexEvent;
+			import mx.events.ListEvent;
+			import mx.managers.ToolTipManager;
+			
+			import spark.components.Label;
+			
+			private var taskOperator:TaskOperator;
+			
+			[Bindable]
+			private var _projects:ArrayCollection;
+			[Bindable]
+			private var _users:ArrayCollection;
+			
+			private var tasks:Array/* = [
+				{ date: '10.09 Просрочено на 3 дня',
+					children: [
+						{   num: 1,
+							project: 2236765,
+							name: 886053,
+							status: 'TO'
+						},
+						{ 	num: 2,
+							project: 183869,
+							name: 75317,
+							status: 'VC'
+						},
+						{ 	num: 3,
+							population: 334614,
+							family: 130363,
+							code: 'NO' }
+					]}];*/
+			private function init():void{				
+				getProjects();
+				getUsers();
+			}
+			private function addContextMenu(obj:Object):void{
+				obj.addEventListener(MouseEvent.CONTEXT_MENU, onRightClick);
+				obj.contextMenu = setContextMenu(obj);
+			}
+			
+		
+			
+			private function getOldTasks():void{
+				var param:Object = {};
+				param.date_start = filter_done.date_start.text;
+				param.date_finish = filter_done.date_finish.text;
+				if(filter_done.days_count.enabled)
+					param.days_count = filter_done.days_count.value;
+				if(filter_done.project.selectedIndex >= 0)
+					param.id_project = filter_done.project.selectedItem.id_project;
+				if(filter_done.userFilter && filter_done.userList.selectedIndex >= 0)
+					param.id_staff = filter_done.userList.selectedItem.id_staff;
+
+				param.status_list = filter_done.status_list.selectedValue;
+				param.text = filter_done.textTask.text;
+				oldTasksTable.dataProvider = new ArrayCollection();
+				Remote.setRequest("Tasks", this, "getDoneList", param); 
+			}
+			public function Tasks_getDoneListResult(result:Object):void{
+				var res:Array = result.data as Array;
+				if(res.length == 0)
+					return;
+				var tasks:Array;
+				taskOperator = new TaskOperator(result.data as Array, false);
+				tasks = taskOperator.getTasks();	
+				oldTasksTable.dataProvider = new HierarchicalData(tasks);
+//				callLater(function():void{oldTasksTable.expandAll();});
+			}
+		
+			
+			private function getProjects(param:Object = null):void{
+				Remote.setRequest("Projects", this, "getLiteList",  param);
+			}
+			public function Projects_getLiteListResult(result:Object):void{
+				var res:Array = result.data as Array;
+				_projects = new ArrayCollection(Func.insertBlankItem2(res, "name"));
+			}			
+			
+			private function getUsers():void{
+				Remote.setRequest("Users", this, "getLiteList");
+			}
+			public function Users_getLiteListResult(result:Object):void{
+				var res:Array = result.data as Array;
+				_users = new ArrayCollection(Func.insertBlankItem2(res, "name_second"));
+			}
+
+			protected function myADG_itemClickHandler(event:ListEvent):void{
+				var item:Object = AdvancedDataGrid(event.currentTarget).selectedItem;
+				event.target.expandItem(item, !event.target.isItemOpen(item), true);
+			}
+			
+			private function setContextMenu(par:Object):ContextMenu{	
+				var cm:ContextMenu = new ContextMenu();
+				//var t1:NativeMenuItem = new NativeMenuItem(data.nick);
+				var show:NativeMenuItem = new NativeMenuItem("Просмотр");
+				show.addEventListener(Event.SELECT, function():void{showTask(par)});
+			//	var ok:NativeMenuItem = new NativeMenuItem("Подтвердить");
+			//	ok.addEventListener(Event.SELECT, function():void{okTask(data)})				
+				var edit:NativeMenuItem = new NativeMenuItem("Редактировать");
+				edit.addEventListener(Event.SELECT, function():void{editTask(par)});
+				
+				
+				
+			//	var del:NativeMenuItem = new NativeMenuItem("Удалить");
+			//	del.addEventListener(Event.SELECT, function():void{delTaskQuest(data)})
+				var copy:NativeMenuItem = new NativeMenuItem("Копировать");
+				copy.addEventListener(Event.SELECT, function():void{copyTask(par)})
+				var add:NativeMenuItem = new NativeMenuItem("Новая задача");
+				add.addEventListener(Event.SELECT, function():void{addTask()})
+
+				var items:Array = [];
+
+				if(Globals.access.task_show)
+					items.push(show);
+				if(Globals.access.task_edit)
+					items.push(edit);
+
+				items.push(Func.getMenuSeparator());
+				items.push(copy);
+				items.push(Func.getMenuSeparator());
+				if(Globals.access.task_add)
+					items.push(add);
+				
+				cm.items = items;
+				
+				
+				return cm;
+			}
+
+			private function showTask(par:Object):void{
+				var item:Object = par.selectedItem;
+				if(!item)
+					return;
+				var winTitle:String;
+				winTitle = "Задача: " + item.id_task;
+				WinManager.addWin("TaskCard", item, winTitle);
+			}	
+			
+			
+			private function editTask(par:Object):void{
+				var item:Object = par.selectedItem;
+				var winTitle:String;
+				winTitle = "Редактирование задачи: " + item.id_task;
+				WinManager.addWin("Task", item, winTitle);
+			}
+
+			private function addTask():void{
+				var winTitle:String;
+				winTitle = "Добавление задачи";
+				WinManager.addWin("Task", null, winTitle);
+			}
+			
+			private function copyTask(par:Object):void{
+				var item:Object = par.selectedItem;
+				System.setClipboard(item.id_project_text+": "+item.name);
+			}
+			
+
+			
+			private function onRightClick(e:MouseEvent):void{	
+				if(e.target is Label){
+					return;
+				}
+				
+				var r:*;
+				if(getQualifiedClassName(e.currentTarget)=="mx.controls::AdvancedDataGrid")
+					r = e.target as AdvancedDataGridItemRenderer; 
+				else
+					r = e.target as DataGridItemRenderer;
+					
+				if(r == null)
+					return;
+				var selectedIndex:int = e.currentTarget.itemRendererToIndex(r); 
+				e.currentTarget.selectedIndex = selectedIndex;
+				e.currentTarget.setStyle("rollOverColor", undefined);				
+			}
+			
+			private function showTooltip(item:Object):String{
+				var tip:String = "";
+				if(!item.hasOwnProperty("dsc"))
+					return "";
+				if(item != null){
+					tip = item.dsc;
+				}
+				return tip;
+			}
+
+			private function onItemDoubleClick(event:ListEvent):void{
+				if(!(event.itemRenderer is ADGdateRenderer))
+					showTask(event.currentTarget);
+			}
+
+		
+
+		]]>
+	</fx:Script>
+
+	
+
+			<s:VGroup width="100%" height="100%">
+				<utils:TaskFilter id="filter_done" projects="{_projects}" users="{_users}" userFilter="true" filterAction="getOldTasks()"/>
+				<mx:AdvancedDataGrid id="oldTasksTable" dataTipFunction="showTooltip" creationComplete="{addContextMenu(oldTasksTable)}"
+									 variableRowHeight="true" itemClick="myADG_itemClickHandler(event)" itemDoubleClick="onItemDoubleClick(event)"
+									 wordWrap="true" width="100%" height="100%">
+					<mx:columns>
+						<mx:AdvancedDataGridColumn headerText="" width="0" minWidth="0"	dataField="date"/>
+						<mx:AdvancedDataGridColumn headerText="#" width="40" dataField="num"/>
+						<mx:AdvancedDataGridColumn headerText="Проект" dataField="id_project_text" width="140" showDataTips="true"/>
+						<mx:AdvancedDataGridColumn headerText="Задача" showDataTips="true" dataField="name"/>
+						<mx:AdvancedDataGridColumn headerText="Кто" showDataTips="true"  dataField="id_staff_owner_text" width="80"/>
+						<mx:AdvancedDataGridColumn headerText="Кому" showDataTips="true"  dataField="id_staff_worker_text" width="80"/>
+						<mx:AdvancedDataGridColumn headerText="Проверка" showDataTips="true"  dataField="id_staff_accepter_text" width="90"/>
+						<mx:AdvancedDataGridColumn headerText="Статус" dataField="status" width="100" id="statusCol"/>
+						<mx:AdvancedDataGridColumn dataField="comments_count" headerText="Комм." width="80"/>
+					</mx:columns>
+					<mx:rendererProviders>            
+						<mx:AdvancedDataGridRendererProvider 
+							dataField="date" 						
+							renderer="components.utils.renderers.ADGdateRenderer"
+							columnIndex="0" 
+							columnSpan="0"/>
+						<mx:AdvancedDataGridRendererProvider column="{statusCol}" depth="2" renderer="components.utils.renderers.TaskStatusRenderer"/>
+					</mx:rendererProviders>
+				</mx:AdvancedDataGrid>
+			</s:VGroup>	
+	
+	<s:HGroup right="20" bottom="10" alpha="0.6">
+		<s:Button label="&gt;&lt;" toolTip="Свернуть" width="35" fontFamily="Courier New" click="{oldTasksTable.collapseAll()}"/>
+		<s:Button label="&lt;&gt;" toolTip="Развернуть" width="35" fontFamily="Courier New" click="{oldTasksTable.expandAll()}"/>
+	</s:HGroup>
+		
+</containers:MDIWindow>

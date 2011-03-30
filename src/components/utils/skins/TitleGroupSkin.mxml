@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Skin xmlns:fx="http://ns.adobe.com/mxml/2009" xmlns:s="library://ns.adobe.com/flex/spark" 
+    xmlns:fb="http://ns.adobe.com/flashbuilder/2009" alpha.disabled="0.5">
+
+    <fx:Metadata>
+    <![CDATA[ 
+        [HostComponent("components.utils.TitleGroup")]
+    ]]>
+    </fx:Metadata> 
+	
+    
+   
+    <s:states>
+        <s:State name="normal" />
+        <s:State name="disabled" />
+        <s:State name="opened" />
+    </s:states>
+	<!-- layer 1: border -->
+	<s:Rect left="{hostComponent.paddingLeft}" right="{hostComponent.paddingRight}" top="8" bottom="10" radiusX="7" radiusY="7">
+		<s:stroke>
+			<s:SolidColorStroke color="0" alpha="1" weight="1" />
+		</s:stroke>
+	</s:Rect>		
+	
+	
+			
+	<s:HGroup top="0" left="20">
+		<s:Label text="{hostComponent.title}" paddingTop="4" paddingLeft="3" paddingRight="3" backgroundColor="{hostComponent.backgroundColor}"/>
+		<s:ToggleButton label.normal="открыть" label.opened="закрыть" visible="{hostComponent.bounce}" click="{hostComponent.bounceMe()}" height="17"/>		
+	</s:HGroup>	
+			
+	
+	    <!--
+        Note: setting the minimum size to 0 here so that changes to the host component's
+        size will not be thwarted by this skin part's minimum size.   This is a compromise,
+        more about it here: http://bugs.adobe.com/jira/browse/SDK-21143
+    -->
+    <!--- @copy spark.components.SkinnableContainer#contentGroup -->
+    <s:Group id="contentGroup" left="20" right="20" top="20" bottom="20" minWidth="0" minHeight="0">
+        <s:layout>
+            <s:BasicLayout/>
+        </s:layout>				
+    </s:Group>
+</s:Skin>

@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:ItemRenderer xmlns:fx="http://ns.adobe.com/mxml/2009" 
+				xmlns:s="library://ns.adobe.com/flex/spark" 
+				xmlns:mx="library://ns.adobe.com/flex/mx" 
+				autoDrawBackground="true" height="98" initialize="init()">
+	<fx:Script>
+		<![CDATA[
+			import components.utils.skins.borderBottom;
+			
+			import spark.components.List;
+			
+			private function init():void{
+				this.addEventListener(MouseEvent.CONTEXT_MENU, onRightClick);
+				setContextMenu();
+			}
+			private function setContextMenu():void{
+				contextMenu = new ContextMenu;
+				var set:NativeMenuItem = new NativeMenuItem("Настройки");
+				var del:NativeMenuItem = new NativeMenuItem("Удалить");
+				//var sep:NativeMenuItem = new NativeMenuItem("",true);
+				var dis:NativeMenuItem = new NativeMenuItem("Отключить");
+				contextMenu.items = [set, dis, del];
+			}
+			private function onRightClick(e:MouseEvent):void{
+				List(owner).selectedIndex = -1;
+				this.selected = true;
+				//trace(e)				
+			}
+			
+		]]>
+	</fx:Script>
+
+	<s:BorderContainer width="100%" height="100%" skinClass="components.utils.skins.borderBottom" borderVisible="false">
+		<mx:Image x="10" y="9" width="50" height="50"/>
+		<s:HGroup y="10" verticalAlign="middle" right="10" left="70">
+			<s:Label text="{data.name}" fontWeight="bold" id="nameExt"/>
+			<s:Label text="{data.ver}" id="ver"/>
+		</s:HGroup>
+		<mx:Text selectable="false" y="30" height="31" text="{data.dsc}" id="desc" paddingTop="2" paddingBottom="0" left="70" right="10" enabled="true"/>
+		<s:Button x="10" y="69" label="Настройки" id="settings" enabled="{data.settings}"/>
+		<s:HGroup horizontalAlign="right" y="68" width="170" verticalAlign="middle" right="10">
+			<s:Button label="Отключить" id="dis"/>
+			<s:Button label="Удалить" id="del"/>
+		</s:HGroup>		
+	</s:BorderContainer>
+
+</s:ItemRenderer>

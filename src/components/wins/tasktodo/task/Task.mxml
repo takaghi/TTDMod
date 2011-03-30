@@ -1,0 +1,425 @@
+<?xml version="1.0" encoding="utf-8"?>
+<containers:MDIWindow xmlns:fx="http://ns.adobe.com/mxml/2009" 
+					  xmlns:s="library://ns.adobe.com/flex/spark" 
+					  xmlns:mx="library://ns.adobe.com/flex/mx" 
+					  layout="absolute" 
+					  initialize="init()" minWidth="480" minHeight="550" creationComplete="onCreationComplete()" tabEnabled="false"
+					  xmlns:utils="components.utils.*" xmlns:containers="flexmdi.containers.*" xmlns:validators="components.utils.validators.*">
+	<fx:Declarations>
+	
+		<mx:StringValidator id="val_task_name" source="{task_name}" property="text" minLength="2" tooShortError="Чо за название?" requiredFieldError="Заполни название"/>
+		<!--<validators:SugComboValidator id="val_task_name" source="{task_name}" property="text" />-->
+		<mx:NumberValidator id="val_project_id" source="{id_project}" property="selectedIndex" minValue="0" lowerThanMinError="Выбери проект"  />
+		<mx:NumberValidator id="val_worker_id" source="{id_staff_worker}" property="selectedIndex" minValue="0" lowerThanMinError="Выбери исполнителя"  />
+		<mx:NumberValidator id="val_accepter_id" source="{id_staff_accepter}" property="selectedIndex" minValue="0" lowerThanMinError="Выбери проверяющего"  />
+
+		
+
+	</fx:Declarations>
+	
+<fx:Script>
+		<![CDATA[
+			import classes.Remote;
+			import classes.WinManager;
+			
+			import components.utils.Func;
+			
+			import mx.collections.ArrayCollection;
+			import mx.controls.Alert;
+			import mx.events.ValidationResultEvent;
+			import mx.utils.ObjectProxy;
+			import mx.validators.Validator;
+			
+			import spark.components.ComboBox;
+			import spark.components.DropDownList;
+			
+			
+			private var edit:Boolean = false;
+			
+			[Bindable]
+			private var _data:ObjectProxy;
+			
+			private var fileArray:Array = [];
+			private var tempFile:Object;
+			
+			[Bindable]
+			private var addButton_label:String = "Добавить";
+			
+			[Bindable]
+			private var validatorArray:Array;
+			
+			[Bindable]
+			private var users:ArrayCollection;
+			
+			
+			private var repeatDataId:Array = ["id_project", "date_plan_start", "id_staff_worker", "is_preferable", "accept", "id_staff_accepter", "priority", "urgency"];
+			
+			private function init():void{
+				validatorArray = [val_task_name, val_project_id, val_worker_id, val_accepter_id];
+			}
+			
+			private function setPath(textField:String = "", func:String = ""):void{
+				var directory:File;
+				var path:String = "";
+				var component:Object = this;
+				directory = File.documentsDirectory;
+				
+				try	{
+					directory.browseForDirectory("Select Directory");
+					directory.addEventListener(Event.SELECT, directorySelected);
+				}
+				catch (error:Error){
+					trace("Failed:", error.message);
+				}
+				/**
+				 * 	Проверка папки наличия файлов
+				 */
+				function directorySelected(event:Event=null):void {
+					directory = event.target as File;
+					path = directory.nativePath;
+					if(textField!="")
+						component[textField].text = path;
+					if(func!="")
+						component[func](path);
+				}
+			}
+			
+
+			private function getProjects(param:Object = null):void{
+				Remote.setRequest("Projects", this, "getLiteList", param);	
+			}
+			public function Projects_getLiteListResult(result:Object):void{
+				var projectsData:ArrayCollection = new ArrayCollection(result.data as Array);
+				id_project.dataProvider = projectsData;
+				if(_data != null)
+					id_project.selectedIndex = Func.getProviderIndex(projectsData, "id_project", _data.id_project)
+				else if(Globals.taskRepeatData != null)
+					id_project.selectedIndex = Globals.taskRepeatData["id_project"];
+			}
+			
+			private function getUsers(param:Object = null):void{
+				Remote.setRequest("Users", this, "getLiteList", param);
+			}
+			public function Users_getLiteListResult(result:Object):void{
+				users = new ArrayCollection(result.data as Array)
+				for each(var o:Object in users){
+					o.id_staff_accepter = o.id_staff;
+					o.id_staff_worker = o.id_staff;
+				}
+				id_staff_accepter.dataProvider = users;
+				id_staff_worker.dataProvider = users;
+				if(_data == null && Globals.taskRepeatData == null){
+					id_staff_worker.selectedIndex = Func.getProviderIndex(users, "id_staff", Globals.id_staff);
+					id_staff_accepter.selectedIndex = Func.getProviderIndex(users, "id_staff", Globals.id_staff);
+				}else if(_data != null){
+					id_staff_worker.selectedIndex = Func.getProviderIndex(users, "id_staff", _data.id_staff_worker);
+					id_staff_accepter.selectedIndex = Func.getProviderIndex(users, "id_staff", _data.id_staff_accepter);
+				}else if(_data == null && Globals.taskRepeatData!=null){
+					id_staff_worker.selectedIndex = Globals.taskRepeatData["id_staff_worker"];
+					id_staff_accepter.selectedIndex = Globals.taskRepeatData["id_staff_accepter"];
+				}
+			}
+
+			private function onCreationComplete():void{
+				if(_data == null && Globals.taskRepeatData){
+					for(var nameEl:String in Globals.taskRepeatData){
+						trace(nameEl, Globals.taskRepeatData[nameEl]);
+						var el:* = this[nameEl];
+	
+						if(el is TextInput || el is DateField){
+							el.text = Globals.taskRepeatData[nameEl];
+							if(el.id == "date_plan_start"){
+								checkTodayDate(el);								
+							}
+						}
+						else if(el is DropDownList || el is ComboBox || el is myCombo)
+							el.selectedIndex = Globals.taskRepeatData[nameEl];
+						else if(el is CheckBox)
+							el.selected = Globals.taskRepeatData[nameEl];					
+					}
+				}
+			}
+			
+			private function checkTodayDate(el:DateField):void{			
+				/*if(el.text != Func.getMySQLDate2(new Date()))
+					mx.controls.TextInput(el.getChildAt(2)).setStyle("contentBackgroundColor", 0xf9e76a);
+				else
+					mx.controls.TextInput(el.getChildAt(2)).setStyle("contentBackgroundColor", undefined);*/
+				if(parseInt(el.text) < parseInt(Func.getMySQLDate2(new Date())))
+					mx.controls.TextInput(el.getChildAt(2)).setStyle("contentBackgroundColor", 0xFC9494);
+				else if(parseInt(el.text) > parseInt(Func.getMySQLDate2(new Date())))
+					mx.controls.TextInput(el.getChildAt(2)).setStyle("contentBackgroundColor", 0xF9E76A);
+				else
+					mx.controls.TextInput(el.getChildAt(2)).setStyle("contentBackgroundColor", undefined);
+			}
+			
+			private function setDefaultData():void{
+				id_staff_worker.selectedIndex = Func.getProviderIndex(users, "id_staff", Globals.id_staff);
+				id_staff_accepter.selectedIndex = Func.getProviderIndex(users, "id_staff", Globals.id_staff);
+				priority.selected = false;
+				urgency.selected = false;
+				is_preferable.selected = false;
+				accept.selected = true;
+				date_plan_start.text = (_data==null)?Func.getMySQLDate2(new Date()):Func.convertStringDate(_data.date_plan_start);
+			}
+			
+			override public function set data(d:Object):void{
+				if(d == null){
+					title = "Новая задача";
+					return;
+				}
+				edit = true;
+				addButton_label = "Редактировать";
+				_data = new ObjectProxy(d);
+				Remote.setRequest("Tasks", this, "getEdit", null, d.id_task);				
+			}	
+			override public function get data():Object{
+				return _data;				
+			}
+
+			public function Tasks_getEditResult(result:Object):void{
+				_data = new ObjectProxy(result.data[0]);
+			}
+		
+			private function cancell():void{
+				WinManager.close_open(this);
+			}
+			
+			public function updateFileList(path:String=""):void{
+				if(path==""){
+					setPath("", "updateFileList");
+				}else{					
+					tempFile = {path: path};
+					
+					var disc:String = path.charAt(0).toLowerCase();
+					var str:String = "Выбран файл: " + path;
+					if(disc!="p" || disc!="f")
+						str += ".  ВЫБРАН ФАЙЛ ИЗ ЛОКАЛЬНОЙ ПАПКИ!!!"
+					fileStatus.text = str;
+				}
+			}	
+			
+			/**
+			 * добавить файл или папку
+			 */
+			private function addFile():void{
+				if(!tempFile)
+					return;
+				
+				tempFile.comment = fileComm.text;
+				fileArray.push({path: tempFile.path, comment:tempFile.comment});				
+								
+				fileList.addElement(Func.createFileList(tempFile.path, tempFile.comment));
+				tempFile = null;
+				fileStatus.text = "";
+				fileComm.text = "";
+			}
+			
+			/**
+			 * 	Обновить файл-лист			 
+			 */
+			private function setFileList():void{				
+				if(_data==null)
+					return;
+				
+				var files:Array = (String)(_data.links).split("]");
+				files.pop();
+				
+				for(var i:int=0; i<files.length; i++){
+					var ind:int = files[i].search(/\[/i);
+					var path:String = files[i].substring(0, ind);
+					var comment:String = files[i].substring(ind+1);					
+								
+					fileList.addElement(Func.createFileList(path, comment));					
+				}
+			}	
+
+			private function dscFocusOut(event:FocusEvent):void{
+				var txt:String = (String)(event.currentTarget.plain_text);
+				var n:Number = 60;
+				n = (txt.search("\n") > 0) ? txt.search("\n"):n;
+				if(this.task_name.text == ''){
+					this.task_name.text = txt.substr(0, n);
+				}
+			}
+			
+			private function addTask():void{
+				
+				if(accept.selected)
+					validatorArray = [val_task_name, val_project_id, val_worker_id, val_accepter_id];
+				else
+					validatorArray = [val_task_name, val_project_id, val_worker_id];
+				
+				
+				var validatorErrorArray:Array = Validator.validateAll(validatorArray);;
+				var isValidForm:Boolean = validatorErrorArray.length == 0;
+				if (!isValidForm)  {
+					var err:ValidationResultEvent;
+					var errorMessageArray:Array = [];
+					for each (err in validatorErrorArray) {
+						var errField:String = err.currentTarget.source.name;
+						errorMessageArray.push("'"+errField + "' - обязательное поле"/* + err.message*/);
+					}
+					Alert.show(errorMessageArray.join("\n"), "Форма не заполнена...", Alert.OK);
+					return;
+				}
+								
+				var param:Object = {};				
+				param = Func.showInputs(mainParams, param);
+				
+				if(!edit){
+					Globals.taskRepeatData = {};
+					for(var i:int = 0; i<repeatDataId.length; i++){
+						var val:*;
+						var el:* = this[repeatDataId[i]]
+						if(el is TextInput || el is DateField){
+							val = el.text;	
+						}
+						else if(el is DropDownList || el is ComboBox || el is myCombo)
+							val = el.selectedIndex; 
+						else if(el is CheckBox)
+							val = el.selected;
+						
+						Globals.taskRepeatData[repeatDataId[i]] = val;
+					}
+				}
+				
+				var links:String = "";
+				for each(var o:Object in fileArray){
+					links += o.path+"["+o.comment+"]";
+				}	
+				param.links = Func.backSlash(links);
+				param.link_folder = Func.backSlash(param.link_folder);
+				
+				if(edit)
+					Remote.setRequest("Tasks", this, "edit", param, _data.id_task);
+				else
+					Remote.setRequest("Tasks", this, "add", param);
+			}
+			public function Tasks_addResult(res:Object):void{
+				if(res.data.add){
+					WinManager.close_open(this);
+				}
+			}
+			public function Tasks_editResult(res:Object):void{
+				if(res.data.edit){
+					WinManager.close_open(this, "TaskCard", {id_task:_data.id_task});
+				}
+			}
+			
+			private function onPushEnter(e:KeyboardEvent):void{		///костыль
+				if(e.keyCode==13){
+					trace(e.currentTarget.id)
+					switch(e.currentTarget.id){
+						case "id_project" :	task_name.setFocus();
+											break;
+						case "task_name"  : dsc.setFocus();
+											break;
+					}
+				}
+			}
+			
+
+
+						
+			private function onResizeEditor(event:Event):void{
+				width = event.currentTarget.width + 180;
+				height = event.currentTarget.height + 400;
+				
+				trace(dsc.tabIndex)
+			}
+
+
+
+		]]>
+	</fx:Script>
+	
+	<mx:Canvas bottom="10" width="100%">
+		<s:Button tabIndex="14" label="{addButton_label}" id="addButton" horizontalCenter="-117" click="addTask()"/>
+		<s:Button tabIndex="16" label="Отмена" click="cancell()" horizontalCenter="117"/>
+		<s:Button tabIndex="15" horizontalCenter="0" label="Сбросить" click="setDefaultData()"/>
+	</mx:Canvas>
+		
+						
+			<s:TabBar dataProvider="{viewstack1}" cornerRadius="0" height="22"/>
+			<s:Group width="100%" top="21"><s:Line width="100%">
+						 <s:stroke>
+							 <s:SolidColorStroke color="0x000000"/>
+						 </s:stroke>
+					 </s:Line></s:Group>
+			<mx:ViewStack id="viewstack1" left="0" right="0" bottom="40" paddingTop="0" top="23">
+			
+
+				
+				<s:NavigatorContent id="mainParams" label="Основные" width="100%" height="100%">
+					<s:VGroup width="100%" top="0" bottom="20" gap="0" horizontalAlign="center">
+						<utils:TitleGroup width="100%" top="0" title="Задача" right="0" left="0">
+								<s:VGroup width="100%" height="100%">
+									<s:HGroup width="100%" verticalAlign="middle">
+										<s:Label text="Проект" width="130" textAlign="right"/>
+										<utils:myCombo tabIndex="1" keyUp="onPushEnter(event)" name="Проект" labelField="name" id="id_project" initialize="getProjects()" width="100%"/>
+									</s:HGroup>
+									<s:HGroup width="100%" verticalAlign="middle">
+										<s:Label text="Задача" width="130" textAlign="right"/>
+										<!--<s:TextInput keyUp="onPushEnter(event)" name="Задача" id="task_name" width="100%" text="{_data.name}" fontWeight="bold"/>
+										<utils:SugCombo keyUp="onPushEnter(event)" dataProvider="{new ArrayCollection()}" text="{_data.name}" name="Задача" id="task_name" width="100%"  fontWeight="bold"/>-->
+										<utils:SugInput tabIndex="2" keyUp="onPushEnter(event)" text="{_data.name}" sugtext="{_data.name}" name="Задача" id="task_name" width="100%"  fontWeight="bold"/>
+									</s:HGroup>
+									<s:HGroup width="100%" verticalAlign="top">
+										<s:Label text="Текст" width="130" textAlign="right"/>
+										<utils:CustomEditor tabChildren="true" tabFocusEnabled="true" tabIndex="3" focusOut="dscFocusOut(event)" minHeight="148" minWidth="300" resizeEditor="onResizeEditor(event)" width="100%" id="dsc" text ="{_data.dsc}"/>
+									</s:HGroup>
+									<s:HGroup width="100%" verticalAlign="middle">
+										<s:Label text="Папка" width="130" textAlign="right"/>
+										<s:TextInput tabIndex="4" id="link_folder" width="222" text="{_data.link_folder}"/>
+										<s:Button tabIndex="5" id="but" label="Папка" click="setPath('link_folder')"/>
+									</s:HGroup>
+									<s:HGroup width="100%" verticalAlign="middle">
+										<s:Label text="URL" width="130" textAlign="right"/>
+										<s:TextInput tabIndex="6" width="100%" id="link" text="{_data.link}"/>
+									</s:HGroup>
+								</s:VGroup>
+						</utils:TitleGroup>
+						<utils:TitleGroup title="Опции" width="100%">
+							<s:VGroup width="100%" height="100%">
+								<s:HGroup width="100%" verticalAlign="middle">
+									<s:Label text="Дата выполнения" width="130" textAlign="right"/>
+									<mx:DateField change="checkTodayDate(date_plan_start)" tabIndex="7" id="date_plan_start" text="{(_data==null)?Func.getMySQLDate2(new Date()):Func.convertStringDate(_data.date_plan_start)}" monthNames="{Globals.months}" dayNames="{Globals.days}" width="100%" x="92" formatString="DD-MM-YYYY" firstDayOfWeek="1"/>
+								</s:HGroup>
+								<s:HGroup width="100%" verticalAlign="middle">
+									<s:Label text="Исполнитель" width="130" textAlign="right"/>
+									<utils:UserDropDownList tabIndex="8" name="Исполнитель" prompt="Выберите исполнителя" labelField="name_second" id="id_staff_worker" width="100%" labelFunction="Func.myNameLabelFunction"/>
+								</s:HGroup>
+								<s:HGroup width="100%">
+									<mx:Spacer height="17" width="130"/>
+									<s:CheckBox tabIndex="9" label="Через руководителя" id="is_preferable" selected="{_data.id_user_preferable ==  1}"/>
+								</s:HGroup>
+								<s:HGroup width="100%">
+									<s:CheckBox tabIndex="10" label="С проверкой" id="accept" selected="true" width="130"/>
+									<utils:UserDropDownList tabIndex="11" name="Проверяющий" prompt="Выберите проверяющего" labelField="name_second" labelFunction="Func.myNameLabelFunction" id="id_staff_accepter" creationComplete="getUsers()" width="100%" enabled="{accept.selected}"/>
+								</s:HGroup>
+								<s:HGroup width="100%">
+									<s:CheckBox tabIndex="12" label="Срочная" width="130" id="priority" selected="{_data.priority > 0}"/>
+									<s:CheckBox tabIndex="13" label="Важная" width="100%" id="urgency" selected="{_data.urgency == 1}"/>
+								</s:HGroup>
+							</s:VGroup>
+						</utils:TitleGroup>						
+					</s:VGroup>
+				</s:NavigatorContent>
+				<s:NavigatorContent label="Файлы" width="100%" height="100%">
+						<s:TextArea id="fileComm" height="50" bottom="10" left="86" right="45"/>
+						<s:VGroup id="fileList" left="10" right="10" bottom="82" top="10" creationComplete="setFileList()">
+								<s:HGroup width="100%" verticalAlign="middle" paddingTop="5">
+										<s:Label text="Файл/папка" width="50%" fontWeight="bold" fontSize="14" fontFamily="Arial"/>
+										<s:Label text="Комментарий" width="50%" fontSize="14" fontWeight="bold"/>
+								</s:HGroup>
+								<mx:HRule width="100%"/>
+						</s:VGroup>
+						<s:Button label="Файл" click="Func.setFilePath(this, 'updateFileList')" left="10" bottom="38"/>
+						<s:Button label="Папка" click="updateFileList()" left="10" bottom="10"/>
+						<s:Button label="+" width="31" height="50" right="10" bottom="10" click="addFile()"/>
+						<s:Label y="377" right="10" left="10" id="fileStatus" fontSize="11"/>
+				</s:NavigatorContent>
+		</mx:ViewStack>	
+			
+</containers:MDIWindow>

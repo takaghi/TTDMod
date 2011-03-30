@@ -1,0 +1,146 @@
+<?xml version="1.0" encoding="utf-8"?>
+<containers:MDIWindow xmlns:fx="http://ns.adobe.com/mxml/2009" 
+					  xmlns:s="library://ns.adobe.com/flex/spark" 
+					  xmlns:mx="library://ns.adobe.com/flex/mx" 
+					  xmlns:containers="flexmdi.containers.*"  layout="absolute"
+					  title="Пользователи" xmlns:utils="components.utils.*"
+					  width="100%" height="100%" minWidth="640" minHeight="480"
+					  initialize="init()">
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+	
+	<fx:Script>
+		<![CDATA[
+			import classes.Remote;
+			import classes.WinManager;
+			
+			import mx.collections.ArrayCollection;
+			import mx.controls.Alert;
+			import mx.events.CloseEvent;
+			
+			[Bindable]
+			private var _users:ArrayCollection;
+			
+			private function init():void{
+				getUsers();	
+				this.addEventListener(KeyboardEvent.KEY_DOWN, onKeyDown);
+			}
+			
+			private function onKeyDown(e:KeyboardEvent):void{
+				if(e.keyCode == 116){
+					getUsers();
+				}
+			}
+			
+			private function onItemDoubleClick():void{
+				showUser(usersTable.selectedItem)
+			}
+		
+			private function getUsers(param:Object = null):void{
+				Remote.setRequest("Users", this, "getList", param); 
+			}
+			public function Users_getListResult(result:Object):void{
+				var res:Array = result.data as Array;
+				_users = new ArrayCollection(res);
+				this.title = "Пользователи ("+ res.length+")";
+			}
+			
+			
+			private function delUser(id:String):void{
+				Remote.setRequest("Users", this, "delete", null, id);
+			}			
+			public function Users_deleteResult(result:Object):void{
+				if(result.data && result.data["delete"])
+					getUsers();
+				else{
+					
+				}
+			}			
+			
+			private function getContextMenu(table:myDataGrid):ContextMenu{				
+				var cm:ContextMenu = new ContextMenu();
+				//var t1:NativeMenuItem = new NativeMenuItem(data.nick);
+				var show:NativeMenuItem = new NativeMenuItem("Просмотр");
+				show.addEventListener(Event.SELECT, function():void{showUser(table.selectedItem)})
+				var edit:NativeMenuItem = new NativeMenuItem("Редактировать");
+				edit.addEventListener(Event.SELECT, function():void{addUser(table.selectedItem)})
+				var del:NativeMenuItem = new NativeMenuItem("Удалить");
+				del.addEventListener(Event.SELECT, function():void{delUserQuest(table.selectedItem)})
+				var sep:NativeMenuItem = new NativeMenuItem("",true);
+				var add:NativeMenuItem = new NativeMenuItem("Добавить");
+				add.addEventListener(Event.SELECT, function():void{addUser()})
+				var cal:NativeMenuItem = new NativeMenuItem("Календарь");
+				cal.addEventListener(Event.SELECT, function():void{openCalendar(table.selectedItem)})
+
+				var items:Array = [show];				
+				if(Globals.access.staff_edit)
+					items.push(edit);
+				if(Globals.access.staff_del)
+					items.push(del);
+				items.push(sep);
+				if(Globals.access.staff_add)
+					items.push(add);
+				items.push(cal);
+				
+				cm.items = items;
+				
+				return cm;
+			}
+			
+			private function openCalendar(data:Object):void{
+				WinManager.addWin('Calendar', data);
+			}
+			
+			private function delUserQuest(data:Object = null):void{	
+				Alert.noLabel = "Нет";
+				Alert.yesLabel = "Да";
+				var a:Alert = Alert.show("Удалить пользователя: "+data.name_second+ " " +data.name_first+" ?", "Вопрос", Alert.YES | Alert.NO, null, delUserAlertListener);				
+				//a.width = 220;
+				
+				function delUserAlertListener(e:CloseEvent):void{
+					if (e.detail == Alert.YES) {
+						//Alert.show("Стереть воспоминания?", "Контрольный вопрос", Alert.YES | Alert.NO);
+						delUser(data.id_staff);
+					}
+				}
+			}
+			
+			private function addUser(data:Object = null):void{
+				var winTitle:String;
+				if(data){
+					winTitle = "Редактирование пользователя: "+ data.name_second+" "+data.name_first;
+				}
+				else{
+					winTitle = "Добавление пользователя";
+				}
+				
+				WinManager.addWin("User", data, winTitle);
+			}
+			
+			private function showUser(data:Object):void{
+				var winTitle:String;
+				winTitle = "Просмотр пользователя: "+ data.name_second+" "+data.name_first;			
+				WinManager.addWin("UserCard", data, winTitle);
+			}
+			
+			public function usersTableFilterHandler(o:Object):void{
+				getUsers(o);
+			}
+			
+			
+		]]>
+	</fx:Script>	
+		<utils:myDataGrid width="100%" borderVisible="false"
+						  id="usersTable" editable="false" dataProvider="{_users}" context="{getContextMenu(usersTable)}" 
+						  parentObj="{this}" mydoubleClickEnabled="true" filterFunction="usersTableFilterHandler"
+						  filter="true" bottom="0" top="0" left="0" itemDoubleClick="onItemDoubleClick()">
+			<utils:columns>
+				<mx:DataGridColumn width="120" headerText="Фамилия" dataField="name_second" />
+				<mx:DataGridColumn width="120" headerText="Имя" dataField="name_first" />              
+				<mx:DataGridColumn width="200" headerText="Должность" dataField="department" />               
+				<mx:DataGridColumn headerText="Статус" dataField="status" />               
+			</utils:columns>
+		</utils:myDataGrid>
+
+</containers:MDIWindow>

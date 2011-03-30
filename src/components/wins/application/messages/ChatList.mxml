@@ -1,0 +1,152 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Group xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		 xmlns:s="library://ns.adobe.com/flex/spark" 
+		 xmlns:mx="library://ns.adobe.com/flex/mx" width="400" height="300">
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+	
+	<fx:Script>
+		<![CDATA[
+			import components.utils.Func;
+			
+			import mx.collections.ArrayCollection;
+			import mx.containers.Canvas;
+			import mx.controls.Label;
+			import mx.controls.Text;
+			import mx.controls.listClasses.IListItemRenderer;
+			import mx.core.EventPriority;
+			import mx.core.UITextField;
+			import mx.events.ListEvent;
+			
+			import spark.components.NavigatorContent;
+			import spark.components.VGroup;
+			import spark.components.VScrollBar;
+			
+			[Bindable]
+			private var _users:ArrayCollection;
+			
+			private var historyList:Object = {};
+			private var cm:ContextMenu;
+			
+			public function set users(u:Array):void{
+				_users = new ArrayCollection(u);
+			}
+			
+			private function initUserList():void{
+				userList.contextMenu = getContextMenu();
+				userList.addEventListener(ListEvent.ITEM_DOUBLE_CLICK, onItemDoubleClick, false, 0, true);	
+				userList.addEventListener(MouseEvent.CONTEXT_MENU, onRightClick, false, 0, true);				
+			}
+			
+			private function onRightClick(e:MouseEvent):void{
+				var t:* = e.target;
+				if(!(e.target is UITextField)){
+					userList.contextMenu = null;
+					return;
+				}
+				
+				var r:IListItemRenderer = e.target.automationOwner as IListItemRenderer; 
+				if(r == null)
+					return;
+				var selectedIndex:int = userList.itemRendererToIndex(r); 
+				userList.selectedIndex = selectedIndex;
+				userList.setStyle("rollOverColor", undefined);
+			}
+			
+			private function getContextMenu():ContextMenu{				
+				var cm:ContextMenu = new ContextMenu();
+				var chat:NativeMenuItem = new NativeMenuItem("Чат");
+				chat.addEventListener(Event.SELECT, onItemDoubleClick, false, 0, true)
+				var items:Array = [chat];	
+				cm.items = items;				
+				return cm;
+			}
+			
+			private function onItemDoubleClick(e:Event = null):void{
+				var name:String = "";
+				var id:String = "";
+				var ip:String = "";
+				
+				if(userList.selectedItems.length==0 || userList.selectedIndex < 0)
+					return;
+				
+				if(userList.selectedItems.length == 1){					
+					name = userList.selectedItem.name_second;
+					id = userList.selectedItem.id_staff;
+					ip = userList.selectedItem.ip;
+				}else{
+					var arr:Array = userList.selectedItems.sortOn("id_staff");
+					for(var i:int=0; i < arr.length; i++){
+						name += arr[i].name_second+", ";
+						id += arr[i].id_staff+", ";						
+					}
+					name = name.substr(0, name.length-2);
+					id = id.substr(0, name.length-2);
+				}
+				
+				if(!historyList.hasOwnProperty(name)){					
+					createTab(name, id, ip);
+				}else{
+					history.selectedChild = historyList[name];
+				}
+				userList.selectedIndex = -1;
+			}
+			
+			private function createTab(name:String, id:String, ip:String):void{
+				var nc:NC = new NC();
+				historyList[name] = nc;
+				nc.id = "tab"+id;
+				nc.label = name;
+				nc.ip = ip;
+									
+				history.addElement(nc);
+				history.selectedChild = nc;
+			}
+			
+			public function newMessage(o:Object, remote:Boolean = false):void{
+				if(history.selectedIndex<0)
+					return;
+				
+				trace("addMessage")
+				var vg:VGroup = new VGroup();
+				vg.gap = 0;
+				vg.percentWidth = 100;
+				var l:Label = new Label();
+				if(remote)
+					l.setStyle("color", 0xFF0000);
+				else
+					l.setStyle("color", 0x0000FF);
+				l.setStyle("fontWeight", "bold");
+				l.setStyle("fontSize", 12);
+				l.setStyle("paddingLeft", 5);
+				l.text = o.id_task_owner_text+" ("+o.date+")";
+				var t:Text = new Text();
+				t.text = o.dsc;
+				
+				vg.addElement(l);
+				vg.addElement(t);
+				NC(history.selectedChild).addMessage(vg);
+			}
+			
+			public function get actIP():String{
+				return NC(history.selectedChild).ip;
+			}
+			
+		]]>
+	</fx:Script>
+	
+	<s:TabBar dataProvider="{history}" cornerRadius="0" height="22" left="10" top="10"/>
+	
+	<s:Rect left="0" right="180" top="31" bottom="10">
+		<s:stroke>
+			<s:SolidColorStroke color="0" alpha="0.50" weight="1" />
+		</s:stroke>
+	</s:Rect>
+	
+	<mx:ViewStack id="history" left="1" right="181" bottom="11" top="32" backgroundColor="#E9EFF1"/>
+	<mx:List width="170" creationComplete="initUserList()" id="userList" labelField="name_second" labelFunction="Func.myNameLabelFunction"
+			dataProvider="{_users}" doubleClickEnabled="true" allowMultipleSelection="true" 			
+			right="0" top="33" bottom="10" contentBackgroundColor="#E9EFF1"/>
+	
+</s:Group>

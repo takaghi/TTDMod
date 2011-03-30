@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="utf-8"?>
+<utils:TitleGroup xmlns:fx="http://ns.adobe.com/mxml/2009" 
+				  xmlns:s="library://ns.adobe.com/flex/spark" 
+				  xmlns:mx="library://ns.adobe.com/flex/mx" 
+				  xmlns:utils="components.utils.*" width="100%"
+				  title="Фильтр">
+	<fx:Declarations>
+		<s:RadioButtonGroup id="status_list"/>
+		
+	</fx:Declarations>
+	
+	<fx:Metadata>
+		[Event(name="filterAction")]
+	</fx:Metadata>
+		
+	<fx:Script>
+		<![CDATA[
+			import mx.collections.ArrayCollection;
+			
+			[Bindable]
+			public var userFilter:Boolean = false;
+			
+						
+			public function set projects(proj:ArrayCollection):void{
+				project.dataProvider = proj;
+			}
+			public function set users(usersList:ArrayCollection):void{				
+		//		if(usersList && usersList.getItemAt(0).name_second!="")
+		//			usersList.addItemAt({name_second:""},0)
+				userList.dataProvider = usersList;
+				userList.selectedIndex = Func.getProviderIndex(usersList, "id_staff", Globals.id_staff)
+			}
+			
+			private function getFilter():void{
+				if(date_finish.text=="")
+					date_finish.text = Func.getMySQLDate2(new Date());
+				if((date_start.text!="" || date_finish.text!="") && (project.selectedIndex>=0 || userList.selectedIndex>=0))
+					dispatchEvent(new Event("filterAction"));
+			}
+			
+			
+		]]>
+	</fx:Script>
+	
+	<s:VGroup width="100%">
+	<s:HGroup width="100%" height="100%" verticalAlign="middle">		
+		<s:TextInput id="textTask" width="100%"/>
+		<mx:VRule height="25"/>	
+		<s:RadioButton label="Исполнитель" value="1" groupName="status_list"/>
+		<s:RadioButton label="Постановщик" value="2" groupName="status_list"/>
+		<s:RadioButton label="Проверяющий" value="3" groupName="status_list"/>
+		<s:RadioButton label="Все" value="4" groupName="status_list" selected="true"/>
+		<mx:VRule height="25"/>	
+		<utils:UserDropDownList visible="{userFilter}" enabled="{Globals.access.task_filter}" includeInLayout="{userFilter}" width="130" id="userList" labelField="name_second" labelFunction="Func.myNameLabelFunction"/>
+	</s:HGroup>
+	<s:HGroup width="100%" height="100%" verticalAlign="middle">
+		<s:Label text="Начиная с" paddingTop="2"/>
+		<mx:DateField editable="true" width="106" text="{Func.getMySQLDate2(new Date(), -30)}" monthNames="{Globals.months}" id="date_start" dayNames="{Globals.days}" formatString="DD-MM-YYYY" firstDayOfWeek="1"/>
+		<s:CheckBox id="periodBox" label="за"/>
+		<s:NumericStepper enabled="{periodBox.selected}" value="10" id="days_count"/>
+		<s:Label text="дней / по" enabled="{periodBox.selected}" paddingTop="2"/>
+		<mx:DateField  enabled="{!periodBox.selected}" editable="true" width="106" monthNames="{Globals.months}" id="date_finish" dayNames="{Globals.days}" formatString="DD-MM-YYYY" firstDayOfWeek="1"/>
+		<mx:VRule height="23"/>
+		<s:ComboBox width="160" id="project" labelField="name"/>			
+		<mx:VRule visible="{userFilter}" includeInLayout="{userFilter}" height="25"/>
+		<s:Button label="OK" click="getFilter()" width="100%"/>				
+	</s:HGroup>
+	</s:VGroup>
+</utils:TitleGroup>

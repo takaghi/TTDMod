@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Group xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		 xmlns:s="library://ns.adobe.com/flex/spark" 
+		 xmlns:mx="library://ns.adobe.com/flex/mx" width="148" height="80">
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+	
+	<fx:Script>
+		<![CDATA[
+			import mx.utils.ObjectProxy;
+
+			
+			[Bindable]
+			private var _data:Object;
+			
+			public function set data(d:Object):void{
+				_data = new ObjectProxy(d);
+			}
+			
+		]]>
+	</fx:Script>
+	<s:Label x="9" y="6" text="Всего:" fontWeight="bold"/>	
+	<s:Label x="10" y="25" text="Новые:" fontWeight="bold"/>
+	<s:Label x="10" y="45" text="Просроченные:" fontWeight="bold"/>
+	<s:Label x="10" y="65" text="На проверку:" fontWeight="bold"/>
+	<s:Label x="110" y="6" text="{_data.current}" fontWeight="bold" color="#B00000"/>
+	<s:Label x="110" y="25" text="{_data['new']}" fontWeight="bold" color="#B00000"/>
+	<s:Label x="110" y="45" text="{_data.overtime}" fontWeight="bold" color="#B00000"/>
+	<s:Label x="110" y="65" text="{_data.verification}" fontWeight="bold" color="#B00000"/>
+
+</s:Group>

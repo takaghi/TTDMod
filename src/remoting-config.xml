@@ -1,0 +1,139 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<service id="remoting-service" class="flex.messaging.services.RemotingService" messageTypes="flex.messaging.messages.RemotingMessage">
+
+    <adapters>
+        <adapter-definition id="php-object" default="true"/>
+    </adapters>
+
+    <default-channels>
+        <channel ref="my-amf"/>
+        <channel ref="my-rtmp"/>
+        <channel ref="my-amf-absolute"/>
+    </default-channels>
+
+    <destination id="AccountBalanceDestination">
+      <properties>
+        <source>Weborb.Examples.AccountBalance</source>
+      </properties>
+      <security>
+        <security-constraint>
+          <auth-method>Custom</auth-method>
+          <roles>
+            <role>examplesuser</role>
+          </roles>
+        </security-constraint> 
+      </security> 
+    </destination> 
+        
+    <destination id="PrimitiveTest">
+        <properties>
+            <source>Weborb.tests.PrimitiveTest</source>
+        </properties>
+    </destination>
+    
+    <destination id="DatabaseTestMsSql">
+        <properties>
+            <source>Weborb.tests.DatabaseTestMsSql</source>
+        </properties>
+    </destination>  
+    
+    <destination id="DatabaseTestMySql">
+        <properties>
+            <source>Weborb.tests.DatabaseTestMySql</source>
+        </properties>
+    </destination>  
+     
+    <destination id="MultipleArgsTest">
+        <properties>
+            <source>Weborb.tests.MultipleArgsTest</source>
+        </properties>
+    </destination>
+    
+    <destination id="StringsTest">
+        <properties>
+            <source>Weborb.tests.StringsTest</source>
+        </properties>
+    </destination>    
+    
+    <destination id="PrimitiveArrayTest">
+        <properties>
+            <source>Weborb.tests.PrimitiveArrayTest</source>
+        </properties>
+    </destination>   
+    
+    <destination id="ComplexTypesTest">
+        <properties>
+            <source>Weborb.tests.ComplexTypesTest</source>
+        </properties>
+    </destination>   
+    
+    <destination id="InfoServiceDestination">
+        <properties>
+            <source>InfoService</source>
+        </properties>
+    </destination>       
+    
+    <destination id="SecureTest">
+        <properties>
+            <source>Weborb.Examples.AccountBalance</source>
+        </properties>
+        <security>
+          <security-constraint>
+            <auth-method>Custom</auth-method>
+            <roles>
+              <role>examplesuser</role>
+            </roles>
+          </security-constraint> 
+        </security>         
+    </destination>   
+
+    <destination id="WeborbManagement">
+        <properties>
+            <source>Weborb.Management.ManagementService</source>
+        </properties>
+    </destination>  
+    
+     <destination id="WeborbSecurity">
+        <properties>
+            <source>Weborb.Management.SecurityService</source>
+        </properties>
+    </destination>
+  
+     <destination id="WeborbConfiguration">
+        <properties>
+            <source>Weborb.Management.ConfigurationService</source>
+        </properties>
+    </destination>    
+
+     <destination id="WDMFCodeGen">
+        <properties>
+            <source>Weborb.Management.DataManagement.Codegen.AppHandler</source>
+        </properties>
+    </destination>    
+
+    <destination id="GenericDestination">
+        <properties>
+            <source>*</source>
+        </properties>
+    </destination> 
+
+    <destination id="GenericAIRDestination">
+        <channels>
+          <channel ref="my-air-amf"/>
+        </channels>    
+        <properties>
+            <source>*</source>
+        </properties>
+     </destination> 
+     
+     
+    <destination id="BusinessIntelligenceDestination">
+        <properties>
+            <source>Weborb.Management.RBIManagementService</source>
+        </properties>
+        <channels>
+            <channel ref="my-amf"/>         
+        </channels>
+    </destination>
+     
+</service>

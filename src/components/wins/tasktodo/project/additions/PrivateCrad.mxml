@@ -1,0 +1,110 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:TitleWindow xmlns:fx="http://ns.adobe.com/mxml/2009" 
+			   xmlns:s="library://ns.adobe.com/flex/spark" 
+			   xmlns:mx="library://ns.adobe.com/flex/mx" 
+			   title="{actions[_action]}"
+			   xmlns:utils="components.utils.*" close="close()" 
+			   xmlns:flexlib="http://code.google.com/p/flexlib/" 
+			   width="292" height="178">
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+		<mx:StringValidator id="val_url" source="{url}" property="text" minLength="2" requiredFieldError="Адрес не заполнено"/>
+		<mx:StringValidator id="val_login" source="{login}" property="text" minLength="2" requiredFieldError="Логин не заполнено"/>
+		<mx:StringValidator id="val_password" source="{password}" property="text" minLength="2" requiredFieldError="Пароль не заполнено"/>
+	</fx:Declarations>
+	
+	<s:states>
+		<s:State name="show" />
+		<s:State name="edit" />
+		<s:State name="add" />
+	</s:states>
+	
+	<fx:Script>
+		<![CDATA[
+			import classes.Remote;
+			
+			import components.utils.Func;
+			
+			import mx.collections.ArrayCollection;
+			import mx.controls.Alert;
+			import mx.managers.PopUpManager;
+			import mx.utils.ObjectProxy;
+			[Bindable]
+			private var _action:String = "";
+			
+			private var user:String = "";
+			private var _par:Object;
+			
+			private var validatorArray:Array;
+			
+			[Bindable]
+			private var _data:Object;
+			
+			[Bindable]
+			private var actions:Object = {add:"Добавить", edit:"Редактировать", show:"Перейти"};
+						
+			public function show(action:String, par:Object, o:Object = null):void{	
+				this.currentState = action;
+			//	_data = new ObjectProxy(o);
+				if(action!="add")
+					Remote.setRequest("PrivateList", this, "getOne", null, o.id_site);
+				_action = action;
+				_par = par;
+				this.setStyle("modalTrasparancy",0.1); 
+				this.setStyle("modalTransparencyBlur",2); 
+				this.setStyle("modalTransparencyColor",0x444444); 
+				this.setStyle("modalTransparencyDuration",45); 
+				
+				PopUpManager.addPopUp(this,DisplayObject(par.parentApplication),true); 
+				PopUpManager.centerPopUp(this);
+				url.setFocus();
+				
+				validatorArray = [	val_url, 
+									val_login, 
+									val_password];
+			}
+			
+			public function PrivateList_getOneResult(result:Object):void{
+				if(result.data.length>0){
+					_data = new ObjectProxy(result.data[0]);					
+				}
+			}
+			
+			public function close(action:Boolean = false):void{
+				if(action){					
+					if(!Func.validateForm(validatorArray))
+						return;
+					
+					var param:Object = {url:url.text, login:login.text, password:password.text };
+					_par.actionDo(param, (_data)?_data.id_site:null);
+				}
+				this.setStyle("modalTransparencyDuration",100);
+				PopUpManager.removePopUp(this);
+			}	
+			
+			private function getIcon():void{
+				icon.source = url.text + "/favicon.ico";
+			}
+			
+			private function openLink():void{
+				Func.openLink(_data.url);
+			}
+						
+		]]>
+	</fx:Script>
+	
+	<s:Button label="{actions[_action]}" click.edit="close(true)" click.add="close(true)" click.show="openLink()" left="10" bottom="10"/>
+	<s:Button label="Отмена" label.show="Закрыть" click="close()" bottom="10" right="10" />
+		<mx:FormItem label="Адрес" horizontalAlign="right" required.show="false" required="true" left="10" y="14" right="10">
+			<s:TextInput id="url" editable.show="false" focusOut="getIcon()" width="205" text="{_data.url}" focusIn.show="{url.selectAll()}"/>
+		</mx:FormItem>	
+		<mx:FormItem label="Логин" horizontalAlign="right" required.show="false" required="true" y="46" left="10" right="40">
+			<s:TextInput id="login" editable.show="false" width="175" text="{_data.login}" focusIn.show="{login.selectAll()}"/>
+		</mx:FormItem>
+		<mx:FormItem label="Пароль" horizontalAlign="right" required.show="false" required="true" y="80" left="10" right="40">
+			<s:TextInput id="password" editable.show="false" width="175" x="76" text="{_data.password}" focusIn.show="{password.selectAll()}"/>
+		</mx:FormItem>
+	<flexlib:IconLoader id="icon" width="24" height="24" right="10" top="60"/>
+	
+	
+</s:TitleWindow>

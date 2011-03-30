@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<mx:ToolTip xmlns:fx="http://ns.adobe.com/mxml/2009" 
+			xmlns:s="library://ns.adobe.com/flex/spark" 
+			xmlns:mx="library://ns.adobe.com/flex/mx" 
+			backgroundColor="#FCF1A9" fontSize="11"
+			dropShadowVisible="false" borderColor="#323434" cornerRadius="0">
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+	
+	<fx:Script>
+		<![CDATA[
+			
+			override protected function commitProperties():void{
+				super.commitProperties();
+				var str:String = text.replace('<p>&nbsp;</p>', '');
+				textField.htmlText = str.split("\r\n").join("");
+			}			
+		]]>
+	</fx:Script>
+	
+</mx:ToolTip>

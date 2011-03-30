@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<mx:Label xmlns:mx="http://www.adobe.com/2006/mxml" textAlign="center" fontWeight="bold">
+	<mx:Script>
+		<![CDATA[
+			
+			override public function set data(value:Object):void{
+				super.data = value;
+				setStyle("color", setColors(value));
+				text = listData.label;			
+			}
+			
+			private function setColors(d:Object):uint{
+				if(d.urgency==1 && d.priority==0){
+					return Globals.taskPriorityColors["urgency"];
+				}else if(d.urgency==0 && d.priority==1){
+					return Globals.taskPriorityColors["priority"];					
+				}else if(d.urgency==1 && d.priority==1){
+					return Globals.taskPriorityColors["all"];
+				}else 
+					return Globals.taskStatusColors[d.status_alias];
+				
+			}	
+		]]>
+	</mx:Script>
+	
+</mx:Label>

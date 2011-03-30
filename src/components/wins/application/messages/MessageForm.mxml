@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:BorderContainer creationComplete="init()" 
+				   width="226" height="120" backgroundFill="{fill}"
+				   xmlns:fx="http://ns.adobe.com/mxml/2009" 
+				   xmlns:s="library://ns.adobe.com/flex/spark" 
+				   xmlns:mx="library://ns.adobe.com/flex/mx"
+				   borderColor="#76A34E" implements="components.utils.interfaces.INotifyForm">
+	
+	<fx:Declarations>
+		<s:LinearGradient rotation="90" id="fill">
+			<s:GradientEntry color="0xFAF48C" />
+			<s:GradientEntry color="0xFAF379" />
+		</s:LinearGradient>
+	</fx:Declarations>
+	
+	
+	
+		
+	<fx:Script>
+		<![CDATA[
+			import mx.utils.ObjectProxy;
+			
+			[Bindable]
+			public var _data:Object;
+			
+			private function init():void{
+				trace("initNotify")
+			}
+			
+			public function set data(d:Object):void{
+				_data = new ObjectProxy(d);
+			}
+			
+			
+		]]>
+	</fx:Script>
+	
+	
+	
+	
+	<mx:Canvas width="100%" backgroundColor="#CCFF8B">
+		<mx:Image source="@Embed('/assets/messageIcon.png')" autoLoad="true" width="16" height="13" x="6" y="3"/>
+		<mx:Label text="{_data.id_task_owner_text}" fontWeight="bold" fontSize="11" textAlign="center" width="100%"/>
+	</mx:Canvas>
+	<mx:Text selectable="false" x="7" y="25" width="206" height="85" text="{_data.dsc}" color="#000000" fontSize="11"/>	
+</s:BorderContainer>

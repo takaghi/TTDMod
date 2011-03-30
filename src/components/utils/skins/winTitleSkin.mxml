@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Skin xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		xmlns:s="library://ns.adobe.com/flex/spark" 
+		xmlns:mx="library://ns.adobe.com/flex/mx">
+	<!-- host component -->
+	<fx:Metadata>
+		[HostComponent("spark.components.BorderContainer")]
+	</fx:Metadata>
+	
+	<!-- states -->
+	<s:states>
+		<s:State name="active" />
+		<s:State name="disabled" />
+		<s:State name="normal" />
+	</s:states>
+	
+	<!-- border -->
+	<s:Rect left="0" right="0" bottom="0">
+		<s:stroke>            
+			<s:SolidColorStroke color="0x5D6165" />
+		</s:stroke>
+	</s:Rect>
+	
+	
+	<!-- fill -->
+	<s:Rect left="0" right="0" top="0" bottom="1">
+
+		<!--<s:fill>
+			<s:SolidColor  color="0xF2F2F2" color.active="0x7767ff" />
+		</s:fill>-->
+		
+		<s:fill>
+			<s:LinearGradient>
+				<s:entries>
+					<s:GradientEntry color.normal="0xF2F2F2" color.active="0xA0B7D9" ratio="0" alpha="1"/>
+					<s:GradientEntry color.normal="0xFFFFFF" color.active="0xE3EAF4" ratio=".86" alpha="1"/>
+				</s:entries>
+			</s:LinearGradient>            
+		</s:fill>
+		
+	</s:Rect>
+	
+
+	
+	<!-- SkinParts
+	name=contentGroup, type=spark.components.Group, required=false
+	-->
+	<s:Group id="contentGroup" left="0" right="0" top="0" bottom="0"/>
+</s:Skin>

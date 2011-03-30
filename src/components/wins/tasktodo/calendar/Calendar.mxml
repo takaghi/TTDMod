@@ -1,0 +1,317 @@
+<?xml version="1.0" encoding="utf-8"?>
+<containers:MDIWindow xmlns:fx="http://ns.adobe.com/mxml/2009" 
+					  xmlns:s="library://ns.adobe.com/flex/spark" 
+					  xmlns:mx="library://ns.adobe.com/flex/mx" 
+					  xmlns:containers="flexmdi.containers.*" 
+					  title="Календарь"
+					  layout="absolute" width="100%" height="100%"
+					  xmlns:utils="components.utils.*"
+					  initialize="init()"
+					  xmlns:additions="components.wins.tasktodo.calendar.additions.*" 
+					  backgroundColor="#EBEBEB" xmlns:validators="components.utils.validators.*">
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+		<mx:StringValidator id="val_date" source="{date}" property="text" requiredFieldError="Заполните дату"/>
+		<validators:timeInputValidator id="val_timeStart" source="{timeStart}" property="time"/>
+		<validators:timeInputValidator id="val_timeFinish" source="{timeFinish}" property="time" />
+	</fx:Declarations>
+
+	
+	<fx:Script>
+		<![CDATA[
+			import classes.CalendarOperator;
+			import classes.Remote;
+			
+			import components.utils.Func;
+			
+			import mx.collections.ArrayCollection;
+			import mx.collections.HierarchicalData;
+			import mx.controls.Alert;
+			import mx.controls.listClasses.IListItemRenderer;
+			import mx.events.CloseEvent;
+			import mx.events.ListEvent;
+			import mx.events.ValidationResultEvent;
+			import mx.validators.Validator;
+		
+			[Bindable]
+			private var _data:ArrayCollection;
+			
+			[Bindable]
+			private var _users:ArrayCollection;
+			
+			[Bindable]
+			private var _statuses:ArrayCollection;
+			
+			[Bindable]
+			private var _months:ArrayCollection;
+			
+			[Bindable]
+			private var _list:Array;
+			[Bindable]
+			private var _total:Object;
+			
+			[Bindable]
+			private var userID:String;
+			[Bindable]
+			private var userIndex:Number;
+			
+			
+			[Bindable]
+			private var validatorArray:Array; 
+			
+			private function init():void{				
+				_months = Func.getCalendarMonths();				
+				getStatusList();
+				getTime();
+				
+				validatorArray = [val_date, val_timeStart, val_timeFinish];
+			}
+			
+			private function getUsers():void{
+				Remote.setRequest("Users", this, "getLiteList");
+			}
+			public function Users_getLiteListResult(result:Object):void{
+				var res:Array = result.data as Array;
+			//	res.unshift({name_second:"", id_staff:-1})
+				_users = new ArrayCollection(res);
+			}	
+			
+			private function getStatusList():void{
+				Remote.setRequest("Calendar", this, "getStatusList");
+			}
+			public function Calendar_getStatusListResult(result:Object):void{
+				_statuses = new ArrayCollection(result.data as Array);
+				statusList.selectedIndex = 0;
+			}
+			
+			private function getList(param:Boolean = false):void{
+				var d:Date = new Date();
+				var date:String =  d.fullYearUTC+"-"+(((d.month+1<10)) ? ("0"+(d.month+1)):(d.month+1).toString());
+				if(!param){
+					Remote.setRequest("Calendar", this, "getList", {id_staff:Globals.id_staff, date:date});
+				}else if(dateList.selectedIndex>=0 && userList.selectedIndex >= 0){					
+					Remote.setRequest("Calendar", this, "getList", {id_staff:userList.selectedItem.id_staff, date:dateList.selectedItem.date});
+				}
+			}
+			public function Calendar_getListResult(result:Object):void{
+				var res:Array = result.data.days as Array;
+				calendarList.dataProvider = new HierarchicalData(new CalendarOperator(res).getDays());
+				
+				
+				_total= result.data.total;
+				userIndex = Func.getProviderIndex(_users, 'id_staff', userID)
+					trace("Calendar_getListResult")
+			}
+			
+			protected function myADG_itemClickHandler(event:ListEvent):void{
+				var item:Object = AdvancedDataGrid(event.currentTarget).selectedItem;
+				event.target.expandItem(item, !event.target.isItemOpen(item), true);
+			}
+			
+			private function getTime():void{
+		//		Remote.setRequest("Calendar", this, "getOne", null, 1);
+			}
+			public function Calendar_getOneResult(result:Object):void{
+				
+		//		timeStart.setTime(result.data.time_start);
+		//		timeFinish.setTime(result.data.time_start);
+				//_list= new ArrayCollection(result.data.days as Array);
+			}
+			
+			private function setColors(l:ArrayCollection):ArrayCollection{
+				var newList:ArrayCollection = new ArrayCollection();
+				for(var i:int=0; i<l.length; i++){
+					var d:Object = l[i]
+					if(d.status!="" && d.status!=null){
+						d.color = Globals.dayColors[d.status];
+					}
+				}
+				return l;
+			}
+			
+			private function onRightClick(e:MouseEvent):void{				
+				if(!(e.target is IListItemRenderer))
+					return;
+				
+				var r:IListItemRenderer = e.target as IListItemRenderer; 
+				if(r == null)
+					return;
+				var selectedIndex:int = calendarList.itemRendererToIndex(r); 
+				calendarList.selectedIndex = selectedIndex;
+				calendarList.setStyle("rollOverColor", undefined);			
+			}
+			
+			private function addContextMenu():void{				
+				var cm:ContextMenu = new ContextMenu();
+				var del:NativeMenuItem = new NativeMenuItem("Удалить");
+				del.addEventListener(Event.SELECT, function():void{delQuest()})
+				var items:Array = [del];	
+				cm.items = items;				
+				calendarList.contextMenu = cm;
+			}
+			
+			private function delQuest():void{	
+				var h:Object = calendarList.selectedItem;
+				Alert.noLabel = "Нет";
+				Alert.yesLabel = "Да";
+				var a:Alert = Alert.show("Удалить запись: "+h.time_start+" ?", "Вопрос", Alert.YES | Alert.NO, null, delAlertListener);				
+				a.width = 220;
+				
+				function delAlertListener(e:CloseEvent):void{
+					if (e.detail == Alert.YES) {
+						delCalendar(h.id_calendar);
+					}
+				}
+			}
+			private function delCalendar(id:String):void{
+				Remote.setRequest("Calendar", this, "delete", null, id);
+			}
+			public function Calendar_deleteResult(result:Object):void{
+				if(result.data && result.data["delete"])
+					getList();
+			}
+			
+			
+			private function add():void{
+								
+				var validatorErrorArray:Array = Validator.validateAll(validatorArray);;
+				var isValidForm:Boolean = validatorErrorArray.length == 0;
+				if (!isValidForm)  {
+					var err:ValidationResultEvent;
+					var errorMessageArray:Array = [];
+					for each (err in validatorErrorArray) {
+						var errField:String = err.currentTarget.source.name;
+						errorMessageArray.push("'"+errField + "' - обязательное поле"/* + err.message*/);
+					}
+					Alert.show(errorMessageArray.join("\n"), "Форма не заполнена...", Alert.OK);
+					return;
+				}
+				
+				
+				var param:Object = {
+						date: Func.getMySQLDate(DateField.stringToDate(date.text, "DD-MM-YYYY")),
+						id_status: statusList.selectedItem.id_status
+					}
+				param.time_start = timeStart.time;
+				param.time_finish = timeFinish.time;
+				
+				if(userList.selectedIndex > 0){
+					param.id_staff = userList.selectedItem.id_staff;
+				}
+				Remote.setRequest("Calendar", this, "add", param);
+			}
+			public function Calendar_addResult(result:Object):void{
+				if(result.data && result.data["add"])
+					if(userList.selectedIndex > 0)
+						getList(true);
+					else
+						getList();
+			}
+			
+			override public function set data(d:Object):void{
+				trace("set data")
+				getUsers();								
+				if(d){
+					var dt:Date = new Date();
+					var date:String =  dt.fullYearUTC+"-"+(((dt.month+1<10)) ? ("0"+(dt.month+1)):(dt.month+1).toString());
+					userID = d.id_staff;					
+		//			userList.selectedIndex = Func.getProviderIndex(_users, 'id_staff', d.id_staff)
+					Remote.setRequest("Calendar", this, "getList", {id_staff:d.id_staff, date:date});
+				}else{
+					userID = Globals.id_staff;
+					getList();
+				}
+			}
+			
+			
+		]]>
+	</fx:Script>
+	
+		
+		<utils:TitleGroup title="Фильтр" horizontalCenter="0" top="0" width="100%">
+			<s:HGroup width="100%" height="100%" verticalAlign="middle">
+				<s:Label text="Месяц"/>
+				<s:DropDownList width="125" id="dateList" dataProvider="{_months}" labelField="name" selectedIndex="0"/>
+				<mx:VRule height="25"/>		
+				<s:Label text="Сотрудник" includeInLayout="{Globals.access.calendar_staff}" visible="{Globals.access.calendar_staff}"/>
+				<utils:UserDropDownList includeInLayout="{Globals.access.calendar_staff}" visible="{Globals.access.calendar_staff}" width="100%" id="userList" dataProvider="{_users}" labelField="name_second" labelFunction="Func.myNameLabelFunction" selectedIndex="{userIndex}"/>
+				<s:Button label="OK" click="getList(true)"/>
+			</s:HGroup>
+		</utils:TitleGroup>
+	
+	<s:VGroup width="100%" paddingLeft="10" top="60" bottom="5" paddingRight="10">
+		
+		<!--<utils:myDataGrid width="100%" height="100%" dataProvider="{_list}" creationComplete="addContextMenu()"
+						  id="calendarList" contextMenu="onRightClick(event)" customRowBackground="true" 
+						  >
+			<utils:columns>
+				<mx:DataGridColumn width="110" headerText="День" dataField="date" />
+				<mx:DataGridColumn width="80" headerText="Приход" dataField="time_start" />              
+				<mx:DataGridColumn width="80" headerText="Уход" dataField="time_finish" />               
+				<mx:DataGridColumn width="80" headerText="Итого" dataField="total" />               
+				<mx:DataGridColumn width="100" headerText="Статус" dataField="status_text" />               
+				<mx:DataGridColumn headerText="Пользователь" dataField="id_staff_add_text" />               
+			</utils:columns>
+		</utils:myDataGrid>-->	
+		<mx:AdvancedDataGrid width="100%" height="100%" creationComplete="addContextMenu()"
+							 id="calendarList" contextMenu="onRightClick(event)" itemClick="myADG_itemClickHandler(event)">
+			<mx:columns>
+				<mx:AdvancedDataGridColumn headerText="" width="0" 
+										   minWidth="0"											    
+										   dataField="date"/>
+				<mx:AdvancedDataGridColumn width="80" headerText="Приход" dataField="time_start"/>
+				<mx:AdvancedDataGridColumn width="80" headerText="Уход" dataField="time_finish"/>
+				<mx:AdvancedDataGridColumn width="80" headerText="Итого" dataField="total"/>
+				<mx:AdvancedDataGridColumn width="100" headerText="Статус" dataField="status_text"/>
+			</mx:columns>
+			<mx:rendererProviders>            
+				<mx:AdvancedDataGridRendererProvider 
+					dataField="date" 						
+					renderer="components.utils.renderers.CalendarDateRenderer"
+					columnIndex="0" 
+					columnSpan="0"/>
+			</mx:rendererProviders>
+		</mx:AdvancedDataGrid>
+		
+		<mx:HBox width="100%" verticalAlign="middle" backgroundColor="#D6D9FC" paddingTop="4" paddingBottom="1" paddingLeft="5">
+			<s:Label text="Рабочих дней"/>
+			<s:Label text="{_total.count}" fontWeight="bold" width="83"/>
+			<mx:Spacer width="20"/>
+			<s:Label text="ИТОГО"/>
+			<s:Label text="{_total.time}" fontWeight="bold"/>
+		</mx:HBox>
+		<mx:HBox width="100%" verticalAlign="middle" backgroundColor="#D6D9FC" paddingTop="4" paddingBottom="1" paddingLeft="5">
+			<s:Label text="% выработки"/>
+			<s:Label text="{_total.output}" fontWeight="bold" width="87"/>
+			<mx:Spacer width="20"/>
+			<s:Label text="Среднее"/>
+			<s:Label text="{_total.average}" fontWeight="bold"/>
+		</mx:HBox>	
+		
+		<utils:TitleGroup includeInLayout="{Globals.access.calendar_edit}" visible="{Globals.access.calendar_edit}" id="handTime" maxBounceHeight="92" title="Добавить время" paddingLeft="0" paddingRight="0" 
+						  bounce="true" width="100%" height="92">
+			<s:VGroup width="100%"  visible="{handTime.bounceOpen}">
+				<s:HGroup width="100%" height="100%" verticalAlign="middle">
+					<s:Label text="Время начала"/>
+					<additions:timeInput id="timeStart" name="Время начала"/>
+					<mx:DateField id="date" text="" name="Дата" 
+								  monthNames="{Globals.months}" dayNames="{Globals.days}" 
+								  width="137" formatString="DD-MM-YYYY" firstDayOfWeek="1"
+								  yearNavigationEnabled="true"/>
+				</s:HGroup>
+				<s:HGroup width="100%" height="100%" verticalAlign="middle">
+					<s:Label text="Время конца" width="82"/>
+					<additions:timeInput id="timeFinish" name="Время конца">
+					</additions:timeInput>
+					<s:Label text="Тип занятости"/>
+					<s:DropDownList id="statusList" labelField="name" dataProvider="{_statuses}" width="187"/>
+					<s:Button label="Добавить" click="add()"/>
+				</s:HGroup>				
+			</s:VGroup>
+		</utils:TitleGroup>
+	</s:VGroup>
+		
+		
+
+	
+</containers:MDIWindow>

@@ -1,0 +1,234 @@
+<?xml version="1.0" encoding="utf-8"?>
+<mx:VBox name="CustomEditor" tabEnabled="true" tabFocusEnabled="true" 
+		 xmlns:fx="http://ns.adobe.com/mxml/2009" backgroundColor="0xffffff"
+		 xmlns:mx="library://ns.adobe.com/flex/mx" minHeight="148"
+		 xmlns:s="library://ns.adobe.com/flex/spark" minWidth="100">
+	
+	<fx:Metadata>
+		[Event(name="resizeEditor")]
+	</fx:Metadata>
+	
+	<fx:Script>
+		<![CDATA[
+			
+			import flash.text.engine.FontPosture;
+			import flash.text.engine.FontWeight;
+			
+			import flashx.textLayout.conversion.ConversionType;
+			import flashx.textLayout.conversion.TextConverter;
+			import flashx.textLayout.formats.TextDecoration;
+			import flashx.textLayout.formats.TextLayoutFormat;
+			
+			import mx.core.DragSource;
+			import mx.events.ColorPickerEvent;
+			import mx.events.DragEvent;
+			import mx.events.FlexEvent;
+			import mx.events.SandboxMouseEvent;
+			import mx.managers.DragManager;
+			
+			import spark.events.IndexChangeEvent;
+			
+			protected function editor_selectionChangeHandler(evt:FlexEvent):void {
+				var txtLayFmt:TextLayoutFormat = editor.getFormatOfRange(null,
+					editor.selectionAnchorPosition,
+					editor.selectionActivePosition);
+				fontDDL.selectedItem = txtLayFmt.fontFamily;
+				sizeDDL.selectedItem = txtLayFmt.fontSize;
+				boldBtn.selected = (txtLayFmt.fontWeight == FontWeight.BOLD);
+				colorCP.selectedColor = txtLayFmt.color;
+
+			}
+			
+			protected function fontDDL_changeHandler(evt:IndexChangeEvent):void {
+				var txtLayFmt:TextLayoutFormat = editor.getFormatOfRange(null,
+					editor.selectionAnchorPosition,
+					editor.selectionActivePosition);
+				txtLayFmt.fontFamily = fontDDL.selectedItem;
+				editor.setFormatOfRange(txtLayFmt,
+					editor.selectionAnchorPosition,
+					editor.selectionActivePosition);
+				editor.setFocus();
+			}
+			
+			protected function sizeDDL_changeHandler(evt:IndexChangeEvent):void {
+				var txtLayFmt:TextLayoutFormat = editor.getFormatOfRange(null,
+					editor.selectionAnchorPosition,
+					editor.selectionActivePosition);
+				txtLayFmt.fontSize = sizeDDL.selectedItem;
+				editor.setFormatOfRange(txtLayFmt,
+					editor.selectionAnchorPosition,
+					editor.selectionActivePosition);
+				editor.setFocus();
+			}
+			
+			protected function boldBtn_clickHandler(evt:MouseEvent):void {
+				var txtLayFmt:TextLayoutFormat = editor.getFormatOfRange(null,
+					editor.selectionAnchorPosition,
+					editor.selectionActivePosition);
+				txtLayFmt.fontWeight = (txtLayFmt.fontWeight == FontWeight.BOLD) ? FontWeight.NORMAL : FontWeight.BOLD;
+				editor.setFormatOfRange(txtLayFmt,
+					editor.selectionAnchorPosition,
+					editor.selectionActivePosition);
+				editor.setFocus();
+			}
+			
+			protected function italBtn_clickHandler(evt:MouseEvent):void {
+				var txtLayFmt:TextLayoutFormat = editor.getFormatOfRange(null,
+					editor.selectionAnchorPosition,
+					editor.selectionActivePosition);
+				txtLayFmt.fontStyle = (txtLayFmt.fontStyle == FontPosture.ITALIC) ? FontPosture.NORMAL : FontPosture.ITALIC;
+				editor.setFormatOfRange(txtLayFmt,
+					editor.selectionAnchorPosition,
+					editor.selectionActivePosition);
+				editor.setFocus();
+			}
+			
+			protected function underBtn_clickHandler(evt:MouseEvent):void {
+				var txtLayFmt:TextLayoutFormat = editor.getFormatOfRange(null,
+					editor.selectionAnchorPosition,
+					editor.selectionActivePosition);
+				txtLayFmt.textDecoration = (txtLayFmt.textDecoration == TextDecoration.UNDERLINE) ? TextDecoration.NONE : TextDecoration.UNDERLINE;
+				editor.setFormatOfRange(txtLayFmt,
+					editor.selectionAnchorPosition,
+					editor.selectionActivePosition);
+				editor.setFocus();
+			}
+			
+			protected function colorCP_changeHandler(evt:ColorPickerEvent):void {
+				var txtLayFmt:TextLayoutFormat = editor.getFormatOfRange(null,
+					editor.selectionAnchorPosition,
+					editor.selectionActivePosition);
+				txtLayFmt.color = colorCP.selectedColor;
+				editor.setFormatOfRange(txtLayFmt,
+					editor.selectionAnchorPosition,
+					editor.selectionActivePosition);
+				editor.setFocus();
+			}
+			
+					
+			public function set text(s:String):void{
+				editor.textFlow = TextConverter.importToFlow(s, TextConverter.TEXT_FIELD_HTML_FORMAT);
+			}
+			public function get text():String{
+				return TextConverter.export(editor.textFlow, TextConverter.TEXT_FIELD_HTML_FORMAT, ConversionType.STRING_TYPE).toString();
+			}
+			public function get plain_text():String{
+				return TextConverter.export(editor.textFlow, TextConverter.PLAIN_TEXT_FORMAT, ConversionType.STRING_TYPE).toString();
+			}
+			
+			override public function setFocus():void{
+				editor.setFocus();
+			}
+			
+		
+			private var clickOffset:Point;
+			private var prevWidth:Number;
+			private var prevHeight:Number;
+			
+			protected function resizeHandle_mouseDownHandler(event:MouseEvent):void
+			{
+				if (!clickOffset)
+				{        
+					clickOffset = new Point(event.stageX, event.stageY);
+					prevWidth = width;
+					prevHeight = height;
+					
+					var sbRoot:DisplayObject = systemManager.getSandboxRoot();
+					
+					sbRoot.addEventListener(
+						MouseEvent.MOUSE_MOVE, resizeHandle_mouseMoveHandler, true);
+					sbRoot.addEventListener(
+						MouseEvent.MOUSE_UP, resizeHandle_mouseUpHandler, true);
+					sbRoot.addEventListener(
+						SandboxMouseEvent.MOUSE_UP_SOMEWHERE, resizeHandle_mouseUpHandler)
+				}
+			}
+			
+			/**
+			 *  @private
+			 */
+			protected function resizeHandle_mouseMoveHandler(event:MouseEvent):void
+			{
+				// during a resize, only the TitleWindow should get mouse move events
+				// we don't check the target since this is on the systemManager and the target
+				// changes a lot -- but this listener only exists during a resize.
+				event.stopImmediatePropagation();
+				
+				if (!clickOffset)
+				{
+					return;
+				}
+				
+				var nWidth:Number = prevWidth + (event.stageX - clickOffset.x);
+				var nHeight:Number = prevHeight + (event.stageY - clickOffset.y);
+				width = (nWidth > minWidth) ? nWidth:minWidth;
+				height = (nHeight > minHeight) ? nHeight:minHeight;
+				event.updateAfterEvent();
+				dispatchEvent(new Event("resizeEditor"));
+			}
+			
+			/**
+			 *  @private
+			 */
+			protected function resizeHandle_mouseUpHandler(event:Event):void
+			{
+				clickOffset = null;
+				prevWidth = NaN;
+				prevHeight = NaN;
+				
+				var sbRoot:DisplayObject = systemManager.getSandboxRoot();
+				
+				sbRoot.removeEventListener(
+					MouseEvent.MOUSE_MOVE, resizeHandle_mouseMoveHandler, true);
+				sbRoot.removeEventListener(
+					MouseEvent.MOUSE_UP, resizeHandle_mouseUpHandler, true);
+				sbRoot.removeEventListener(
+					SandboxMouseEvent.MOUSE_UP_SOMEWHERE, resizeHandle_mouseUpHandler);
+			}
+			
+			[Bindeble]
+			private var _tabIndex:int;
+			
+			override public function set tabIndex(tabi:int):void{
+				_tabIndex = tabi;
+			}
+
+
+		]]>
+	</fx:Script>
+		<mx:Canvas height="100%" width="100%" id="can" focusEnabled="true" tabFocusEnabled="true">
+				<s:TextArea id="editor" tabIndex="{_tabIndex}"
+							tabEnabled="true" tabFocusEnabled="true" focusEnabled="true"
+							width="100%" height="100%"
+							selectionChange="editor_selectionChangeHandler(event);">
+				</s:TextArea>
+		
+			<mx:Image right="5" bottom="5" source="assets/resizeHandler.png" width="12" height="12" 
+					  mouseDown="resizeHandle_mouseDownHandler(event)"/>
+			
+		</mx:Canvas>
+		<mx:HBox focusEnabled="false" tabFocusEnabled="false">
+				<s:ToggleButton id="boldBtn" focusEnabled="false"
+								label="B"
+								fontWeight="bold"
+								width="30"
+								click="boldBtn_clickHandler(event);" />
+			
+				<mx:ColorPicker id="colorCP" tabEnabled="false" tabFocusEnabled="false"
+								change="colorCP_changeHandler(event);" />
+				<s:DropDownList id="fontDDL" focusEnabled="false"
+								width="150"
+								change="fontDDL_changeHandler(event);">
+					<s:dataProvider>
+						<s:ArrayList source="[Arial,Verdana,Times New Roman,Trebuchet MS]" />
+					</s:dataProvider>
+				</s:DropDownList>
+				<s:DropDownList id="sizeDDL" focusEnabled="false"
+								width="60"
+								change="sizeDDL_changeHandler(event);">
+					<s:dataProvider>
+						<s:ArrayList source="[8,10,12,14,16,24,36,72]" />
+					</s:dataProvider>
+				</s:DropDownList>			
+		</mx:HBox>
+</mx:VBox>

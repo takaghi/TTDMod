@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="utf-8"?>
+<mx:Canvas xmlns:mx="http://www.adobe.com/2006/mxml" creationComplete="init()" 
+		   width="226" height="120" borderVisible="true" xmlns:s="library://ns.adobe.com/flex/spark" 
+		   backgroundAlpha="0.9" backgroundColor="#D4D0C8" implements="components.utils.interfaces.INotifyForm">
+
+	<mx:Script>
+		<![CDATA[
+			import components.utils.interfaces.INotifyForm;
+			
+			import mx.utils.ObjectProxy;
+			
+			private var colors:Array = ["#f9a7a7", "#EE6161", "#adf9a7", "#a7c2f9"];
+			
+			[Bindable]
+			private var _data:ObjectProxy;
+				
+				
+			private function init():void{
+				trace("initNotify")
+			}
+			
+			override public function set data(d:Object):void{
+				_data = new ObjectProxy(d);
+			/*	if(_data.status == 5)
+					this.setStyle("backgroundColor", 0xADEF42);
+				else
+					this.setStyle("backgroundColor", colors[_data.priority]); */
+				eventType.setStyle("backgroundColor", setColors(_data)); 
+			}
+			
+			private function setColors(d:Object):uint{
+				if(d.status_alias=="task_complete" || d.status_alias=="task_finish" || d.status_alias=="task_impossible"){
+					return Globals.taskStatusColors[d.status_alias];
+				}else if(d.urgency==1 && d.priority==0){
+					return Globals.taskPriorityColors["urgency"];
+				}else if(d.urgency==0 && d.priority==1){
+					return Globals.taskPriorityColors["priority"];					
+				}else if(d.urgency==1 && d.priority==1){
+					return Globals.taskPriorityColors["all"];
+				}else{
+					return Globals.taskPriorityColors["normal"];
+				}
+			}	
+
+		]]>
+	</mx:Script>
+	
+	<s:BorderContainer width="100%" height="100%" borderColor="#333333" backgroundColor="#D4D0C8">
+	
+
+	<mx:Text selectable="false" x="10" y="23" width="208" height="58" id="dsc_f" text="{_data.name}" fontSize="11"/>	
+	<mx:HRule y="21" width="100%" height="1" strokeColor="#000000" horizontalCenter="0"/>
+	<mx:Canvas y="0" width="100%" height="21" id="eventType">
+		<mx:Label y="0" text="{_data.event_type}" width="100%" textAlign="center" height="21" paddingTop="2"/>
+	</mx:Canvas>
+	<mx:HRule y="83" width="100%" height="1" strokeColor="#000000" horizontalCenter="0"/>
+	<mx:HBox y="84.5" width="100%" x="0">
+		<mx:Label text="Проект" width="70" paddingLeft="10" fontSize="10" fontWeight="bold"/>
+		<mx:Label selectable="false" id="project_f" text="{_data.id_project_text}" fontWeight="bold" fontSize="10"/>
+	</mx:HBox>
+	<mx:HBox y="100" width="100%" x="0">
+		<mx:Label text="Поставил" fontSize="10" width="70" paddingLeft="10" fontWeight="bold"/>
+		<mx:Label selectable="false" id="taskOwner_f" text="{_data.id_staff_owner_text}" fontSize="10" fontWeight="bold"/>
+	</mx:HBox>
+		
+	</s:BorderContainer>
+</mx:Canvas>

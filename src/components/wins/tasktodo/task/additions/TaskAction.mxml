@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:TitleWindow xmlns:fx="http://ns.adobe.com/mxml/2009" 
+			   xmlns:s="library://ns.adobe.com/flex/spark" 
+			   xmlns:mx="library://ns.adobe.com/flex/mx" 
+			   title="{_action}"
+			   width="346" height="216" xmlns:utils="components.utils.*" close="close()">
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+	
+	<s:states>
+		<s:State name="normal" />
+		<s:State name="redirect" />
+		<s:State name="redirectAccept" />
+	</s:states>
+	
+	<fx:Script>
+		<![CDATA[
+			import classes.Remote;
+			
+			import components.utils.Func;
+			
+			import mx.collections.ArrayCollection;
+			import mx.controls.Alert;
+			import mx.managers.PopUpManager;
+			[Bindable]
+			private var _action:String = "";
+			
+			[Bindable]
+			private var _users:ArrayCollection;
+			[Bindable]
+			private var user:String = "";
+			private var _par:Object;
+						
+			public function show(a:String, par:Object, user:String = ""):void{	
+				if(user!="" && user!="redirectAccept"){
+					this.user = user;
+					getUsers();
+					this.currentState = "redirect";
+				}else if(user=="redirectAccept"){
+					getUsers();
+					this.currentState = "redirectAccept";
+				}
+				else{
+					this.currentState = "normal";
+				}
+				
+				_action = a;
+				_par = par;
+				this.setStyle("modalTrasparancy",0.1); 
+				this.setStyle("modalTransparencyBlur",2); 
+				this.setStyle("modalTransparencyColor",0x444444); 
+				this.setStyle("modalTransparencyDuration",45); 
+				
+				PopUpManager.addPopUp(this,DisplayObject(par.parentApplication),true); 
+				PopUpManager.centerPopUp(this);
+				comment.setFocus();
+			}
+			public function close(action:Boolean = false):void{
+				if(user!="" && usersList.selectedIndex < 0){
+			//		Alert.show("Не выбран пользователь", "Error");
+				
+			//		{id_staff_worker:usersList.selectedItem.id_staff}
+				}
+				if(action){
+					var param:Object = {comment:comment.text, make_me_accepter:make_me_accepter.selected};
+					if(usersList.selectedIndex >= 0){
+						if(this.currentState == "redirect")
+							param.id_staff_worker = usersList.selectedItem.id_staff;
+						else
+							param.id_staff_accepter = usersList.selectedItem.id_staff;
+					}
+					_par.actionDo(param);
+				}
+				this.setStyle("modalTransparencyDuration",100);
+				PopUpManager.removePopUp(this);
+			}
+			
+			private function getUsers():void{	
+				Remote.setRequest("Users", this, "getLiteList");	
+			}
+			public function Users_getLiteListResult(result:Object):void{
+				_users = new ArrayCollection(result.data as Array);
+				var i:* =  Func.getProviderIndex(_users, "id_staff", user);
+				//usersList.selectedIndex = Func.getProviderIndex(_users, "id_staff", user);
+			}
+			
+		]]>
+	</fx:Script>
+	
+	<utils:TitleGroup id="commentGroup" title="Добавить комментарий" top="10" bottom.redirectAccept="60" bottom.redirect="60" bottom.normal="30" right="0" left="0">
+		<s:TextArea id="comment" width="100%" height="100%"/>
+	</utils:TitleGroup>
+	<s:Button label="{_action}" click="close(true)" left="10" bottom="10"/>
+	<s:Button label="Отмена" click="close()" bottom="10" right="10"/>
+	<s:HGroup id="redirect" visible.normal="false" visible.redirect="true" visible.redirectAccept="true" x="10" y="122" width="324" height="30">		
+		<utils:UserDropDownList id="usersList" dataProvider="{_users}" selectedIndex="{Func.getProviderIndex(_users, 'id_staff', user)}" prompt="Выберите исполнителя" prompt.redirectAccept="Выберите проверяющего" width="210" labelField="name_second" labelFunction="Func.myNameLabelFunction"/>
+		<s:CheckBox label="я сам проверю" id="make_me_accepter" visible.redirectAccept="false"/>
+	</s:HGroup>
+</s:TitleWindow>

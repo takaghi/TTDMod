@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="utf-8"?>
+<mx:Window xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		  xmlns:s="library://ns.adobe.com/flex/spark" 
+		  xmlns:mx="library://ns.adobe.com/flex/mx" height="452"
+		  title="Окно сообщений" titleIcon="@Embed('/assets/messageIcon.png')"
+		  initialize="init()" xmlns:messages="components.wins.application.messages.*" paddingLeft="5" paddingTop="5" paddingRight="5" paddingBottom="5" width="416">
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+	
+	<fx:Script>
+		<![CDATA[
+			import classes.Remote;
+			import classes.sockets.ClientManager;
+			
+			
+			private var historyArr:Array = [];
+			
+			private static var instance:Object;
+			
+			[Bindable]
+			private var users:Array;
+
+			
+			private function init():void{
+				instance = this;
+				users = Globals.onlineUsers
+				//getUsers();
+			}
+			
+			private function getUsers(param:Object = null):void{
+				Remote.setRequest("Users", this, "getLiteList");
+			}
+			public function Users_getLiteListResult(result:Object):void{
+				users = result.data as Array;			
+			}
+			
+			private function onKeyDown(e:KeyboardEvent):void{
+				if(e.charCode == 13 && enterBut.selected)
+					send()
+			}
+			
+			private function send():void{
+				if(message.text=="")
+					return;
+				
+				var owner:String;
+				
+				for each(var user:Object in Globals.onlineUsers){
+					if(user.id_staff == Globals.id_staff)
+						owner = user.name_first+" "+user.name_second;
+				}
+				
+				var o:Object = {id_task_owner_text: owner, dsc: message.text, date:new Date().toString()};
+				message.text="";
+				historyArr.push(o);
+				updateHistory(o);
+				message.setFocus();
+			}
+			
+			private function updateHistory(o:Object):void{
+				ChatWindow.addMessage(o);
+				ClientManager.send(o, history.actIP);
+			}
+			
+			public static function addMessage(o:Object, remote:Boolean = false):void{
+				ChatWindow.instance.history.newMessage(o, remote);
+			}
+			
+		]]>
+	</fx:Script>
+	<messages:ChatList id="history" right="-22" left="10" users="{users}" bottom="100" top="10"/>
+	<s:TextArea width="400" height="79" id="message" bottom="10" left="10" keyDown="onKeyDown(event)"/>
+
+	<s:HGroup width="100%">
+		<s:ToggleButton label="Enter" id="enterBut"/>
+		<mx:Spacer height="10" width="100%"/>
+		<s:Button label="Отправить" click="send()"/>
+	</s:HGroup>
+
+
+</mx:Window>

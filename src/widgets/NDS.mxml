@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:VGroup xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		 xmlns:s="library://ns.adobe.com/flex/spark" 
+		 xmlns:mx="library://ns.adobe.com/flex/mx"
+		 width="244" height="80"
+		 preinitialize="preInit()"
+		 initialize="init()">
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+	
+	<fx:Script>
+		<![CDATA[
+			import classes.SettingManager;
+			
+			import components.utils.Func;
+			
+			import mx.events.FlexEvent;
+			
+			private function preInit():void{
+				SettingManager.initComponent(this);
+				this.removeEventListener(FlexEvent.PREINITIALIZE, preInit);
+			}
+			
+			private function init():void{
+				priceNDS.restrict = nds.restrict = price.restrict = "0-9,.";
+				priceNDS.addEventListener(KeyboardEvent.KEY_UP, onKeyUp, false, 0, true);
+			}
+			
+			private function onKeyUp(e:Event):void{
+				if(priceNDS.text == ""){
+					price.text = nds.text = "";
+					return;
+				}
+				var val:Number = parseFloat(priceNDS.text);
+				nds.text = (val*18/118).toFixed(2);
+				price.text = (val - val*18/118).toFixed(2);
+			}
+			
+			private function copy(id:String, words:Boolean = false):void{
+				if(words)
+					System.setClipboard(Func.fNumToWord(parseFloat(this[id].text)));
+				else
+					System.setClipboard(this[id].text);
+			}
+			
+		]]>
+	</fx:Script>
+	
+		<s:HGroup>
+			<s:Label text="Цена с НДС:" fontWeight="bold" width="88" height="21" textAlign="left" verticalAlign="middle"/>
+			<s:TextInput id="priceNDS" valueCommit="onKeyUp(event)"  width="80"/>
+			<s:Button label="n" fontSize="10" width="28" click="copy('priceNDS')"/>
+			<s:Button label="w" fontSize="10" width="28" click="copy('priceNDS', true)"/>
+		</s:HGroup>
+	<s:HGroup>
+		<s:Label text="НДС:" fontWeight="bold" width="88" height="21" verticalAlign="middle"/>
+		<s:TextInput id="nds" width="80"/>	
+		<s:Button label="n" width="28" fontSize="10" click="copy('nds')"/>
+		<s:Button label="w" fontSize="10" click="copy('nds', true)" width="28"/>
+	</s:HGroup>
+	<s:HGroup>
+		<s:Label text="Цена без НДС:" fontWeight="bold" width="88" height="21" verticalAlign="middle"/>
+		<s:TextInput id="price" width="80"/>	
+		<s:Button label="n" fontSize="10" width="28" click="copy('price')"/>
+		<s:Button label="w" fontSize="10" width="28" click="copy('price', true)"/>
+	</s:HGroup>
+</s:VGroup>
