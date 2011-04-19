@@ -186,7 +186,7 @@
 					SandboxMouseEvent.MOUSE_UP_SOMEWHERE, resizeHandle_mouseUpHandler);
 			}
 			
-			[Bindeble]
+			[Bindable]
 			private var _tabIndex:int;
 			
 			override public function set tabIndex(tabi:int):void{
