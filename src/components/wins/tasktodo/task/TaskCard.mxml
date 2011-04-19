@@ -101,7 +101,8 @@
 				if(result.data.length>0){
 					_data = new ObjectProxy(result.data[0]);
 					if(_data.comments.length > 0){
-						last_comment.text = _data.comments[0].dsc
+						last_comment.text = _data.comments[0].dsc;
+						last_comment_group.title = "Последний комментарий от " + _data.comments[0].id_staff_owner_text
 					}
 										
 					
