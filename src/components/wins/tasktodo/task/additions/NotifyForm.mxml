@@ -9,7 +9,6 @@
 			
 			import mx.utils.ObjectProxy;
 			
-			private var colors:Array = ["#f9a7a7", "#EE6161", "#adf9a7", "#a7c2f9"];
 			
 			[Bindable]
 			private var _data:ObjectProxy;
@@ -21,25 +20,18 @@
 			
 			override public function set data(d:Object):void{
 				_data = new ObjectProxy(d);
-			/*	if(_data.status == 5)
-					this.setStyle("backgroundColor", 0xADEF42);
-				else
-					this.setStyle("backgroundColor", colors[_data.priority]); */
 				eventType.setStyle("backgroundColor", setColors(_data)); 
 			}
 			
 			private function setColors(d:Object):uint{
-				if(d.status_alias=="task_complete" || d.status_alias=="task_finish" || d.status_alias=="task_impossible"){
-					return Globals.taskStatusColors[d.status_alias];
-				}else if(d.urgency==1 && d.priority==0){
+				if(d.urgency==1 && d.priority==0){
 					return Globals.taskPriorityColors["urgency"];
 				}else if(d.urgency==0 && d.priority==1){
 					return Globals.taskPriorityColors["priority"];					
 				}else if(d.urgency==1 && d.priority==1){
 					return Globals.taskPriorityColors["all"];
-				}else{
-					return Globals.taskPriorityColors["normal"];
-				}
+				}else 
+					return Globals.taskStatusColors[d.status_alias];
 			}	
 
 		]]>
