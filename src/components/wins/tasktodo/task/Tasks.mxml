@@ -73,6 +73,7 @@
 				
 				this.removeEventListener(FlexEvent.INITIALIZE, init);
 			}
+			
 			private function addContextMenu(obj:Object):void{
 				obj.addEventListener(MouseEvent.CONTEXT_MENU, onRightClick, false, 0, true);
 				obj.contextMenu = setContextMenu(obj);
@@ -156,14 +157,13 @@
 				addContextMenu(taskRedirectTable);
 			}
 
-			protected function myADG_itemClickHandler(event:ListEvent):void{
+			private function itemClickHandler(event:ListEvent):void{
 				var item:Object = AdvancedDataGrid(event.currentTarget).selectedItem;
 				event.target.expandItem(item, !event.target.isItemOpen(item), true);
 			}
 			
 			private function setContextMenu(par:Object):ContextMenu{	
 				var cm:ContextMenu = new ContextMenu();
-				//var t1:NativeMenuItem = new NativeMenuItem(data.nick);
 				var show:NativeMenuItem = new NativeMenuItem("Просмотр");
 				show.addEventListener(Event.SELECT, function():void{showTask(par)});
 			//	var ok:NativeMenuItem = new NativeMenuItem("Подтвердить");
@@ -205,10 +205,6 @@
 				copy.addEventListener(Event.SELECT, function():void{copyTask(par)})
 				var add:NativeMenuItem = new NativeMenuItem("Новая задача");
 				add.addEventListener(Event.SELECT, function():void{addTask()})
-			//	var cal:NativeMenuItem = new NativeMenuItem("Календарь");
-			//	cal.addEventListener(Event.SELECT, function():void{addTask()})
-			//	cm.items = [show, ok, edit, del, sep, copy, sep2, add, cal];
-			//	cm.items = [show, edit, sep, copy, sep2, add, cal];
 				
 				var items:Array = [];
 				if(redirect != null && Globals.access.task_redirect_realization){					
@@ -230,20 +226,17 @@
 				items.push(Func.getMenuSeparator());
 				if(Globals.access.task_add)
 					items.push(add);
-			//	items.push(cal);
 				
-				cm.items = items;
-				
+				cm.items = items;				
 				
 				return cm;
 			}
 
 			private function showTask(par:Object):void{
 				var item:Object = par.selectedItem;
-				if(!item)
+				if(item == null)
 					return;
-				var winTitle:String;
-				winTitle = "Задача: " + item.id_task;
+				var winTitle:String = "Задача: " + item.id_task;
 				WinManager.addWin("TaskCard", item, winTitle);
 			}	
 			
@@ -257,14 +250,12 @@
 			
 			private function editTask(par:Object):void{
 				var item:Object = par.selectedItem;
-				var winTitle:String;
-				winTitle = "Редактирование задачи: " + item.id_task;
+				var winTitle:String = "Редактирование задачи: " + item.id_task;
 				WinManager.addWin("Task", item, winTitle);
 			}
 
 			private function addTask():void{
-				var winTitle:String;
-				winTitle = "Добавление задачи";
+				var winTitle:String = "Добавление задачи";
 				WinManager.addWin("Task", null, winTitle);
 			}
 			
@@ -319,6 +310,9 @@
 					showTask(event.currentTarget);
 			}
 			
+			/**
+			 * 	Обновление списков в зависимости от выбранного
+			 */ 
 			private function refreshHandler():void{
 				switch(allTabs.selectedChild.name){					
 					case "content_tasks":
@@ -332,12 +326,6 @@
 						break;
 					case "content_cancel":
 						getTasksCancel({id_staff_worker:Globals.id_staff});
-						break;
-					case "content_done":
-					//	getOldTasks();
-						break;
-					case "content_accept":
-					//	getConfirmedTasks();
 						break;										
 				}				
 			}		
@@ -368,7 +356,7 @@
 		<s:NavigatorContent creationPolicy="all" id="content_tasks" label="Невыполненные" width="100%" height="100%">
 
 			<mx:AdvancedDataGrid id="tasksTable" dataTipFunction="showTooltip" allowMultipleSelection="false"
-								   variableRowHeight="true" itemClick="myADG_itemClickHandler(event)" itemDoubleClick="onItemDoubleClick(event)"
+								   variableRowHeight="true" itemClick="itemClickHandler(event)" itemDoubleClick="onItemDoubleClick(event)"
 								   wordWrap="true" left="-2" top="-5" right="-2" bottom="-2">
 				<mx:columns>
 					<mx:AdvancedDataGridColumn headerText="" width="0" 
