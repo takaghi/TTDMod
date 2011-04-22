@@ -13,6 +13,7 @@ package classes
 	import flash.display.Screen;
 	import flash.events.Event;
 	import flash.events.MouseEvent;
+	import flash.geom.Point;
 	import flash.geom.Rectangle;
 	import flash.utils.clearTimeout;
 	import flash.utils.setInterval;
@@ -21,6 +22,7 @@ package classes
 	import mx.core.FlexGlobals;
 	import mx.core.UIComponent;
 	import mx.core.Window;
+	import mx.events.EffectEvent;
 	import mx.events.FlexEvent;
 	
 	import spark.components.Button;
@@ -31,45 +33,56 @@ package classes
 		
 		private static var instance:NotifyManager;
 		private static var Appl:Object = FlexGlobals.topLevelApplication;
-		private static var notifyCount:int = 1;	
-		private static var time:uint;
+		/**
+		 *	Счетчик окон
+		 */ 
+		private static var notifyCount:int = 0;	
 		
 		private static var chatWindow:ChatWindow;		
 		
 		private static var fadeIn:Fade = new Fade();
+		private static var fadeOut:Fade = new Fade();
 		
 		private static var visibleBounds:Rectangle;
+		
+		/**
+		 *	Координаты всплывающего окна
+		 */  
+		private static var point:Point = new Point();
+		/**
+		 *	Счетчик окон по двум направлениям
+		 */ 
+		private static var notifyCountXY:Point = new Point(1, 1);
 		
 		public function NotifyManager()	{
 			
 			instance = this;
+			visibleBounds = Screen.mainScreen.visibleBounds;
+			initFade();
 			
-			var param:Object = {event_type: "345", priority: 0, urgency: 0, id_project_text: "test project", id_staff_owner_text: "owner", name: "private function setNotify(idTask:String, project:String, taskOwner:String, dsc:String):void{"}
+			var param:Object = {event_type: "345", status_alias: "task_incomplete", priority: 0, urgency: 0, id_project_text: "test project", id_staff_owner_text: "owner", name: "private function setNotify(idTask:String, project:String, taskOwner:String, dsc:String):void{"}
 	/*		var param2:Object = {event_type: "345", priority: 1, urgency: 0, id_project_text: "test project", id_staff_owner_text: "owner", name: "private function setNotify(idTask:String, project:String, taskOwner:String, dsc:String):void{"}
 			var param3:Object = {event_type: "345", priority: 0, urgency: 1, id_project_text: "test project", id_staff_owner_text: "owner", name: "private function setNotify(idTask:String, project:String, taskOwner:String, dsc:String):void{"}
 			var param4:Object = {event_type: "345", priority: 1, urgency: 1, id_project_text: "test project", id_staff_owner_text: "owner", status_alias: "task_impossible"}
 			var param5:Object = {event_type: "345", priority: 0, urgency: 0, id_project_text: "test project", id_staff_owner_text: "owner", status_alias: "task_complete"}
-		
-			
-			var param0:Object = {id_task_owner_text: "owner", dsc: "private function setNotify(idTask:String, project:String, taskOwner:String, dsc:String):void{"}
-			
-				
-				
-			setTimeout(function():void{setNotifyTask(param)},2000);
-			setTimeout(function():void{setNotifyTask(param2)},2500);
-			setTimeout(function():void{setNotifyTask(param3)},3000);
-			setTimeout(function():void{setNotifyTask(param4)},3500);
-			setTimeout(function():void{setNotifyTask(param5)},4000);
-			setTimeout(function():void{setNotifyMessage(param0)},4500);*/
-			
-		//	setInterval(function():void{setNotifyTask(param)},1000);
-			
-			fadeIn.alphaFrom = 0;
-			fadeIn.alphaTo = 100;
-			fadeIn.duration = 3000;
-			
-			visibleBounds = Screen.mainScreen.visibleBounds;
+	*/	
+						
+		//	setInterval(function():void{setNotifyTask(param)},2000);
+		//	setNotifyTask(param)
+
 		}
+		
+		private static function initFade():void{
+			fadeIn.alphaFrom = 0;
+			fadeIn.alphaTo = 1;
+			fadeIn.duration = 1000;	
+			
+			fadeOut.alphaFrom = 1;
+			fadeOut.alphaTo = 0;
+			fadeOut.duration = 300;
+			fadeOut.addEventListener(EffectEvent.EFFECT_END, fadeOutEnd);
+		}
+		
 		/**
 		 * 	Добавление оповещений о задаче
 		 */ 
@@ -93,21 +106,25 @@ package classes
 		
 		private static function setNotify(form:INotifyForm, data:Object):void{
 			UIComponent(form).initialize();
-		//	UIComponent(form).addEventListener(FlexEvent.CREATION_COMPLETE, showMe, false, 0, true);
+	//		UIComponent(form).addEventListener(FlexEvent.CREATION_COMPLETE, showMe, false, 0, true);
 			form.data = data;
 			
 			var width:Number = DisplayObject(form).width;
 			var height:Number = DisplayObject(form).height;	
 		
-			var _y:Number = visibleBounds.height - height*notifyCount;
+			point.x = visibleBounds.width - width*notifyCountXY.x;
+			point.y = visibleBounds.height - height*notifyCountXY.y;
 			
-			_y = (_y<0) ? (_y+height): _y;
-			
-	trace(2, notifyCount, _y)
-	
+			if(point.y < 0){
+				notifyCountXY.x++;
+				notifyCountXY.y = 1;
+				point.x = visibleBounds.width - width*notifyCountXY.x;
+				point.y = visibleBounds.height - height*notifyCountXY.y;
+			}
+				
 			var bounds:Rectangle = new Rectangle(
-				visibleBounds.width - width,
-				_y,
+				point.x,
+				point.y,
 				width,
 				height
 			);
@@ -138,61 +155,37 @@ package classes
 			win.addEventListener(MouseEvent.CONTEXT_MENU, closeNotify, false, 0, true);
 			
 			win.addChild(form as DisplayObject);	
-	//		DisplayObject(form).alpha = 50;
 
 			win.open(false);
-			win.nativeWindow.bounds = bounds;	
+			win.nativeWindow.bounds = bounds;				
 			
-			var bb:uint = 0;
-	/*		setInterval(function():void{
-				bb++;
-				bounds = new Rectangle(
-					visibleBounds.width - width - bb,
-					_y,
-					width,
-					height
-				);
-				win.nativeWindow.bounds = bounds;
+			//win.activate();
+			notifyCountXY.y++;				
+			notifyCount++;
 			
-			},200)*/
-			
-			//		win.activate();
-			notifyCount++;				
-			
-			function showMe(e:FlexEvent):void{
-				trace("show")
-	//			fadeIn.play([form]);
-				
-			/*	time = setTimeout(function():void{
-								/*win.close();
-								notifyCount--;
-								win=null;*/
-				/*				closeNotify(null, win);
-							},30000);*/
-			}
+			fadeIn.play([form]);
 		}
 
-		private static function openNotifyTask(e:MouseEvent):void{
+		private static function openNotifyTask(e:MouseEvent):void{	
 			var win:Window = e.currentTarget as Window;
 			var item:Object = Window(e.currentTarget).data;
 			var winTitle:String = "Задача: " + item.id_task;
 			
-			if(item.type != "private_task"){
+	//		closeNotify(null, win);	return
+			
+			if(item.type != "private_task"){		
 				closeNotify(null, win);				
 				Appl.stage.nativeWindow.visible = true;
 				Appl.stage.nativeWindow.activate();
 				WinManager.addWin("TaskCard", item, winTitle);
 			}
 			else{
-				
-				/*if(e.target.parent.parent is UserDropDownList){
-					var ddl:UserDropDownList = e.target.parent.parent;
-					ddl.addEventListener(IndexChangeEvent.CHANGE, updatePrivateTask, false, 0, true);
-					ddl.openDropDown();
-				}else{*/
-
 				if(e.target.id && e.target.id=="ok"){
-					updatePrivateTask()
+					var param:Object = {time:UserDropDownList(NotifyPrivateForm(win.getChildAt(0)).time).selectedItem.value};
+					Remote.setRequest("PrivateTask", instance, "delay", param, item.id_private_task);
+					closeNotify(null, win);				
+					Appl.stage.nativeWindow.visible = true;
+					Appl.stage.nativeWindow.activate();
 				}else if(e.target.parent.parent is UserDropDownList){
 					var ddl:UserDropDownList = e.target.parent.parent;
 					ddl.openDropDown();
@@ -203,21 +196,8 @@ package classes
 					WinManager.addWin("PrivateTaskCard", item, winTitle);
 				}
 			}
-			
-			function updatePrivateTask(e:IndexChangeEvent = null):void{
-				var param:Object = {time:UserDropDownList(NotifyPrivateForm(win.getChildAt(0)).time).selectedItem.value};
-				Remote.setRequest("PrivateTask", instance, "delay", param, item.id_private_task);
-				closeNotify(null, win);				
-				Appl.stage.nativeWindow.visible = true;
-				Appl.stage.nativeWindow.activate();
-			}
 		}
 		
-		public function PrivateTask_delayResult(res:Object):void{
-			if(res.data.delay){
-				
-			}
-		}
 		
 		private static function openNotifyMessage(e:MouseEvent):void{
 			var item:Object = Window(e.currentTarget).data;
@@ -226,19 +206,28 @@ package classes
 		}
 		
 		private static function closeNotify(e:MouseEvent = null, win0:Window = null):void{
-		//	Window(e.currentTarget).close();
 			var win:Window;
 			if(e != null)
 				win = e.currentTarget as Window;
 			else
 				win = win0;
+			
+			fadeOut.play([win.getChildAt(0)]);
+		}
+		
+		private static function fadeOutEnd(e:EffectEvent):void{
+			trueCloseNotify(e.effectInstance.target.parent as Window);
+		}
+		
+		private static function trueCloseNotify(win:Window):void{
+		//	win.removeAllChildren();
 			setTimeout(function():void{win.close();win=null},100);	
-			win.removeAllChildren();
-		//	clearTimeout(time);
+			
 			notifyCount--;
 			
-			notifyCount = (notifyCount < 1) ? 1 : notifyCount;
-		}
+			if(notifyCount == 0)
+				notifyCountXY = new Point(1, 1);
+		}	
 		
 		public static function openChatWindow():void{	
 			if(chatWindow!=null)
