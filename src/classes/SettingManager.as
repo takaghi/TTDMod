@@ -20,6 +20,10 @@ package classes{
 		
 	public class SettingManager	{
 		
+		
+		private static var initiated:Boolean = false;
+		private static var pool:Vector.<UIComponent> =new Vector.<UIComponent>();
+		
 		/**
 		 * Настройки поумолчанию
 		 * 
@@ -73,18 +77,40 @@ package classes{
 		
 		public function SettingManager(){
 			instance = this;
+			instance.initSettings();
+			readAllSettings();
+		}
+		
+		/**
+		 * 	Берет настройки из SharedObject.
+		 * 	Если есть компоненты инициированые ранее, отправляет их на настройку
+		 * 
+		 */ 
+		private function initSettings():void{
+			if(initiated)
+				return;
+			
 			if(SharedManager.getObj("settings")!=null){	
 				trace("readSettings")
 				settingsArray = Func.arrConcatUnique(settingsArray, SharedManager.getObj("settings") as Array)
-	//			settingsArray = SharedManager.getObj("settings") as Array
+				//			settingsArray = SharedManager.getObj("settings") as Array
 			}
-			readAllSettings();
+			initiated = true;
+			
+			for each(var component:UIComponent in pool){
+				setOptions(component);
+			}
 		}
 		
 		private function readAllSettings():void{			
 			createController();
 		}
 		
+		/**
+		 * 	Создает контроллер настроек.
+		 * 	В зависимости от типа добавляются инпуты.
+		 * 
+		 */ 
 		private function createController():void{
 			for(var i:int=0; i < settingsArray.length; ++i){
 				var o:Object = settingsArray[i];
@@ -105,18 +131,9 @@ package classes{
 							group.addElement(getNum(o.component, op));
 							break;
 						default : return;
-					}
-					
-					
-				/*	for(var s:Object in componentsArr){
-						if(getQualifiedClassName(s).replace("::", ".") == o.component){
-							DisplayObject(s)[op.name] = op.value;
-						}
-					}	*/
-					
+					}					
 				}
-				controller.addElement(group);
-				
+				controller.addElement(group);				
 			}
 			
 			function getCheck(componentClass:String, op:Object):CheckBox{
@@ -142,63 +159,67 @@ package classes{
 			}
 		}
 		
+		/**
+		 *	Обновляет компонент в реальном времени 
+		 * 
+		 */ 
 		private function updateProperty(componentClass:String, op:Object, value:*):void{
-//			trace("updateProperty: "+componentClass+ " "+value)
 			for(var s:Object in componentsArr){
 				if(getQualifiedClassName(s).replace("::", ".") == componentClass){
 					DisplayObject(s)[op.name] = value;
 					op.value = value;
 				}
 			}	
-			
 		}		
 		
-		public static function initComponent(component:*):void{									
-			if(UIComponent(component).initialized){
-			
-				for(var i:int=0; i < settingsArray.length; i++){
-					var o:Object = settingsArray[i];
-					
-					if(getQualifiedClassName(component).replace("::", ".") == o.component){
-						for(var j:int=0; j<o.options.length; ++j){
-							var op:Object = o.options[j];
-							
-							switch(op.type){							
-								case "boolean" : case "number" :
-									DisplayObject(component)[op.name] = op.value;
-									break;
-								default : return;
-							}
-						}				
-					}				
-				}
-			}else{
-				UIComponent(component).addEventListener(FlexEvent.INITIALIZE, setOptions);
-			}
-			
-			trace("initComponent", component, component.name, getQualifiedClassName(component))
+		/**
+		 *	Регистрация настраеваемых компонентов.
+		 * 	Ссылка в коде компонента 
+		 * 
+		 */ 
+		public static function initComponent(component:*):void{	
 			componentsArr[component] = component.name;
-			
+			if(UIComponent(component).initialized){	
+				setOptions(component as UIComponent);
+			}else{
+				UIComponent(component).addEventListener(FlexEvent.INITIALIZE, getComponent);
+			}	
 		}
 		
-		private static function setOptions(e:FlexEvent):void{
+		/**
+		 * 	Если компонент зарегестрирован раньше конструктора, он помещается в пул, ждет конструктора,
+		 * 	в другом случае компонент передается на настройку
+		 * 	
+		 */ 
+		private static function getComponent(e:FlexEvent):void{
 			var component:UIComponent = e.target as UIComponent;
-			component.removeEventListener(FlexEvent.INITIALIZE, setOptions);
+			component.removeEventListener(FlexEvent.INITIALIZE, getComponent);
 			
+			if(!initiated){
+				pool.push(component);
+				return;
+			}
+			setOptions(component);
+		}
+		
+		
+		private static function setOptions(component:UIComponent):void{	
+						
 			for(var i:int=0; i < settingsArray.length; i++){
-				var o:Object = settingsArray[i];
-
-				if(getQualifiedClassName(component).replace("::", ".") == o.component){
-					for(var j:int=0; j<o.options.length; ++j){
+				var o:Object = settingsArray[i];				
+				
+				if(getQualifiedClassName(component).replace("::", ".") == o.component){					
+					
+					for(var j:int=0; j < o.options.length; ++j){
 						var op:Object = o.options[j];
 						
-						trace(o.sub)
 						switch(op.type){							
 							case "boolean" : case "number" :
-								if(o.sub)
+								if(o.sub != undefined){
 									DisplayObject(component)[o.sub][op.name] = op.value;
-								else
+								}else{
 									DisplayObject(component)[op.name] = op.value;
+								}
 								break;
 							default : return;
 						}
