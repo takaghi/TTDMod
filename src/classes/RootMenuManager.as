@@ -336,6 +336,9 @@ package classes{
 		
 		private function clearRemoteCache(event:Event):void{
 			Remote.clearCache();
+			
+			//очистка поля задач
+			SharedManager.clearObj("task_name");
 		}
 	}
 }
