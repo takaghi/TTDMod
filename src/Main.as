@@ -8,6 +8,7 @@ package{
 	import classes.StatusManager;
 	import classes.WinManager;
 	import classes.sockets.ClientManager;
+	import classes.sockets.ServerManager;
 	
 	import components.LoginForm;
 	
@@ -21,33 +22,35 @@ package{
 		private var Appl:Object = FlexGlobals.topLevelApplication;	
 		private var server:ServerSocket;
 		private var client:ClientManager;
-		
-	//	private var loginForm:LoginForm = new LoginForm();
-		
+				
 		public function Main(){
 			new WinManager(Appl.winContainer);
 			new SettingManager();
 			
 			new LoginForm().show();
 			
-	//		loginForm.show();
 	//		new RootMenuManager();
-			//отключить
-		//	Remote.Vars(this, "getList");
+	//отключить
+	//		Remote.Vars(this, "getList");
 			
 			new NotifyManager();	
-	//		server = new ServerManager();
-	//		client = new ClientManager();
+		//	server = new ServerManager();
+		//	client = new ClientManager();
 			
 		}		
 		
-		
+		/**
+		 * Устанавливает пользователя в системе, настраивает меню в зависимости от прав
+		 * @param key персональный ключ пользователя(session ID)
+		 * @param id_staff ID пользователя в базе
+		 * @param access права пользователя
+		 * 
+		 */
 		public function setUser(key:String, id_staff:String, access:Object):void{	
 			Globals.userKey = key;
 			Globals.id_staff = id_staff;
 			Globals.access = access;
 			new RootMenuManager();
-	//		Remote.Vars(this, "getList");
 			Remote.setRequest("Vars", this, "getList");
 			new ServiceManager();
 			
