@@ -26,13 +26,14 @@
 				instance = this;
 				users = Globals.onlineUsers
 				//getUsers();
+					trace(1)
 			}
 			
 			private function getUsers(param:Object = null):void{
 				Remote.setRequest("Users", this, "getLiteList");
 			}
 			public function Users_getLiteListResult(result:Object):void{
-				users = result.data as Array;			
+				users = result.data as Array;	
 			}
 			
 			private function onKeyDown(e:KeyboardEvent):void{
@@ -58,7 +59,7 @@
 				message.setFocus();
 			}
 			
-			private function updateHistory(o:Object):void{
+			private function updateHistory(o:Object):void{	trace("**",history.actIP)
 				ChatWindow.addMessage(o);
 				ClientManager.send(o, history.actIP);
 			}
