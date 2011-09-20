@@ -6,6 +6,10 @@
 		<!-- Place non-visual elements (e.g., services, value objects) here -->
 	</fx:Declarations>
 	
+	<fx:Metadata>
+		[Event(name="onClose", type="*")]
+	</fx:Metadata>
+	
 	
 	<fx:Script>
 		<![CDATA[
@@ -24,7 +28,7 @@
 			private var myData:Array = [];
 			private var tempData:Array = [];
 			private var list:List = new List();
-			private var index:int = 0;
+			private var index:int = -1;
 			private var show:Boolean = false;
 			
 			private var initFlag:Boolean = false;
@@ -83,7 +87,7 @@
 					return;
 				if(e.keyCode == Keyboard.DOWN || e.keyCode == Keyboard.UP || e.keyCode == Keyboard.LEFT || e.keyCode == Keyboard.RIGHT){
 					return;
-				}else if(e.keyCode == Keyboard.ENTER){
+				}else if(e.keyCode == Keyboard.ENTER || e.keyCode == Keyboard.TAB){
 					onEneter();
 					return;
 				}			
@@ -94,12 +98,15 @@
 				if(this.text.length == 0)
 					return;
 				if(tempData.length > 0){
-					this.text = tempData[index];
+					if(index >=0){
+						this.text = tempData[index];
+					}
 					this.selectRange(this.text.length, this.text.length);
 				}else{
 					equal(this.text);
 				}
 				closeList();
+				dispatchEvent(new Event("onClose"));
 			}
 			
 			private function equal(txt:String):void{
@@ -127,7 +134,7 @@
 			}
 			
 			private function testString():void{
-				index = 0;
+				index = -1;
 				var txt:String = this.text;
 				if(txt==""){
 					closeList();
@@ -159,7 +166,7 @@
 		//		this.setStyle("color", 0x000000);
 				
 				list.dataProvider = new ArrayCollection(tempData);
-				callLater(function():void{list.selectedIndex = 0;})
+				callLater(function():void{list.selectedIndex = -1;})
 				
 				if(show)
 					return;
@@ -174,7 +181,7 @@
 			
 			private function closeList(e:Event = null):void{
 				PopUpManager.removePopUp(list);
-				show = false;
+				show = false;				
 			}
 			
 			private function onFocusOut(e:FocusEvent):void{

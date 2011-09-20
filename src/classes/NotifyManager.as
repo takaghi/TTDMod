@@ -1,5 +1,4 @@
-package classes
-{
+package classes{
 	import components.utils.UserDropDownList;
 	import components.utils.interfaces.INotifyForm;
 	import components.wins.application.messages.ChatWindow;
@@ -29,6 +28,10 @@ package classes
 	import spark.effects.Fade;
 	import spark.events.IndexChangeEvent;
 
+	/**
+	 * Менеджер всплывающих окон
+	 * 
+	 */ 
 	public class NotifyManager{
 		
 		private static var instance:NotifyManager;
@@ -80,11 +83,11 @@ package classes
 			fadeOut.alphaFrom = 1;
 			fadeOut.alphaTo = 0;
 			fadeOut.duration = 300;
-			fadeOut.addEventListener(EffectEvent.EFFECT_END, fadeOutEnd);
+//			fadeOut.addEventListener(EffectEvent.EFFECT_END, fadeOutEnd);
 		}
 		
 		/**
-		 * 	Добавление оповещений о задаче
+		 * 	Получает массив задач
 		 */ 
 		public static function setTasks(tasks:Array):void{			
 			var i:int = tasks.length; 			
@@ -96,14 +99,18 @@ package classes
 		public static function setNotifyMessage(data:Object):void{
 				setNotify(new MessageForm(), data);
 		}			
-		
+		/**
+		 * 	Формирует окно в зависимости от типа задачи
+		 */ 
 		public static function setNotifyTask(data:Object):void{		
 			if(data.type != "private_task")
 				setNotify(new NotifyForm(), data);
 			else
 				setNotify(new NotifyPrivateForm(), data);
 		}	
-		
+		/**
+		 * 	Инициализация и добавление окна
+		 */ 
 		private static function setNotify(form:INotifyForm, data:Object):void{
 			UIComponent(form).initialize();
 	//		UIComponent(form).addEventListener(FlexEvent.CREATION_COMPLETE, showMe, false, 0, true);
@@ -161,11 +168,14 @@ package classes
 			
 			//win.activate();
 			notifyCountXY.y++;				
-			notifyCount++;
+//		notifyCount++;
 			
 			fadeIn.play([form]);
 		}
-
+		
+		/**
+		 * 	Открывает окно задачи при клике на сообщение
+		 */ 
 		private static function openNotifyTask(e:MouseEvent):void{	
 			var win:Window = e.currentTarget as Window;
 			var item:Object = Window(e.currentTarget).data;
@@ -204,7 +214,9 @@ package classes
 			closeNotify(e);
 			NotifyManager.openChatWindow();
 		}
-		
+		/**
+		 * 	Закрывает сообщение по правому клику
+		 */ 
 		private static function closeNotify(e:MouseEvent = null, win0:Window = null):void{
 			var win:Window;
 			if(e != null)
@@ -213,22 +225,18 @@ package classes
 				win = win0;
 			
 			fadeOut.play([win.getChildAt(0)]);
+			
+			decrementCounter();
 		}
 		
-		private static function fadeOutEnd(e:EffectEvent):void{
-			trueCloseNotify(e.effectInstance.target.parent as Window);
+		private static function decrementCounter():void{
+			notifyCountXY.y--;
+			if(notifyCountXY.y == 0)
+				notifyCountXY.x--;
 		}
-		
-		private static function trueCloseNotify(win:Window):void{
-		//	win.removeAllChildren();
-			setTimeout(function():void{win.close();win=null},100);	
-			
-			notifyCount--;
-			
-			if(notifyCount == 0)
-				notifyCountXY = new Point(1, 1);
-		}	
-		
+		/**
+		 * 	Открывает чат
+		 */ 
 		public static function openChatWindow():void{	
 			if(chatWindow!=null)
 				return;

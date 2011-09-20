@@ -15,6 +15,9 @@ package classes{
 	import mx.core.BitmapAsset;
 	import mx.core.FlexGlobals;
 	
+	/**
+	 * 	Менеджер меню
+	 */
 	public class RootMenuManager{
 		
 		private var Appl:Object = FlexGlobals.topLevelApplication;
@@ -41,6 +44,9 @@ package classes{
 			}
 		}
 		
+		/**
+		 * 	установки иконк из трея
+		 */
 		private function setTrayIcon():void{
 			if (NativeApplication.supportsSystemTrayIcon){					
 				var trayIcon:BitmapAsset = new TrayIcon() as BitmapAsset;
@@ -73,6 +79,9 @@ package classes{
 			//NativeApplication.nativeApplication.icon.bitmaps = [];
 		}
 		
+		/**
+		 * 	формирование меню
+		 */
 		private function createRootMenu():NativeMenu{
 			var menu:NativeMenu = new NativeMenu();
 			var tasks:NativeMenu = new NativeMenu();
@@ -100,9 +109,6 @@ package classes{
 			calendar.addItem(calendarFull);
 			calendar.addItem(holydays);
 			calendar.addItem(calStat);
-			
-			
-			
 			
 			/////////////////////////////////
 			
@@ -294,7 +300,9 @@ package classes{
 			}
 		}
 		
-		
+		/**
+		 * 	открывает окно по имени класса event.target.name
+		 */
 		private function openWindow(event:Event):void{
 			WinManager.addWin(event.target.name, event.target.data);
 			undock();
@@ -307,7 +315,9 @@ package classes{
 		private function openNativeWindow(event:Event):void{
 			NotifyManager.openChatWindow();	
 		}
-		
+		/**
+		 * 	обновление меню с окнами
+		 */
 		public static function updateWindowMenu(winList:Array):void{
 			for(var i:int = instance.windows.numItems - 1; i > 2; i--){
 				instance.windows.removeItemAt(i);

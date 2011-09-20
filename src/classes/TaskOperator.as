@@ -3,6 +3,11 @@ package classes{
 	
 	import mx.utils.ObjectProxy;
 	
+	
+	/**
+	 * 	Обрабатывает массив задач
+	 * 	возвращает упорядоченный список
+	 */
 	public class TaskOperator{
 		
 		private var taskArr:Array = [];
@@ -98,7 +103,7 @@ package classes{
 			var o:Object;
 			var num:int = 1;
 			var diff:int;
-			for(var i:int = 1; i <= 7; i++){
+			for(var i:int = 1; i <= 21; i++){
 				today.date++;
 				if(obj.hasOwnProperty(Func.getMySQLDate(today)))	
 					continue;

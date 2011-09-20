@@ -26,7 +26,6 @@
 				instance = this;
 				users = Globals.onlineUsers
 				//getUsers();
-					trace(1)
 			}
 			
 			private function getUsers(param:Object = null):void{
@@ -59,7 +58,7 @@
 				message.setFocus();
 			}
 			
-			private function updateHistory(o:Object):void{	trace("**",history.actIP)
+			private function updateHistory(o:Object):void{
 				ChatWindow.addMessage(o);
 				ClientManager.send(o, history.actIP);
 			}

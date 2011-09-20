@@ -1,13 +1,20 @@
 package classes{
+	import flash.events.Event;
+	
 	import mx.controls.Alert;
 	import mx.rpc.events.FaultEvent;
 	import mx.rpc.events.ResultEvent;
 	import mx.rpc.remoting.Operation;
 	import mx.rpc.remoting.RemoteObject;
 	
+	/**
+	 * 	Управление запрсами
+	 */ 
 	public class Remote	{		
 		
-
+		/**
+		 * 	переменные для кеширования
+		 */ 
 		private static var cacheData:Object = {
 												Users_getLiteList : 0,
 												Users_getDepartments : 0,
@@ -16,9 +23,14 @@ package classes{
 												Calendar_getStatusList : 0		
 											};
 		
+		private static var errors:Object = {};
+		
 		public function Remote(){
 		}
 		
+		/**
+		 * 	Авторизация
+		 */ 
 		public static function login(caller:Object, param:Object = null):void{
 			var ro:RemoteObject = new RemoteObject("GenericAIRDestination");
 			ro.endpoint = Globals.endpoint;// "http://tasktodo.alkodesign.ru/WEBORB/weborb.php" 
@@ -50,7 +62,13 @@ package classes{
 		}
 		
 		
-		
+		/**
+		 * 	запрос
+		 * 	@param	name имя класса
+		 * 	@param	caller объект вызвавший метод 
+		 * 	@param	method имя метода 
+		 * 	@param	param параметры 
+		 */ 
 		public static function setRequest(name:String, caller:Object, method:String, param:Object = null, id:* = null, dataID:* = null):void{
 			
 			var strMethod:String = name+"_"+method;
@@ -75,9 +93,6 @@ package classes{
 
 			ro.getOperation(method).send(Globals.userKey, param, id);
 			
-			
-
-			
 			function handleComplete(result:ResultEvent ):void{
 			//	if(method!="logout")
 			//		return;
@@ -99,6 +114,7 @@ package classes{
 						|| method=="cancel"
 						|| method=="complete"
 						|| method=="confirmComplete"
+						|| method=="redirectRealization"
 						|| method=="addComment")){				
 							WinManager.update(caller, "task");
 					}
@@ -109,7 +125,7 @@ package classes{
 						WinManager.updateWidget("private_tasks");
 					}
 					
-					trace("WinManager.update",name,method)
+			//		trace("WinManager.update",name,method)
 					
 					WinManager.update(caller, "application");
 					if(cache!=null && cache == 0){
@@ -122,13 +138,21 @@ package classes{
 				caller = null;
 				ro = null;
 			} 			
-			function handleFault( fault:FaultEvent ):void{  
+			function handleFault( fault:FaultEvent ):void{ 
+				if(errors[name+method] == 1)
+					return;
+				errors[name+method] = 1;
 				StatusManager.setStatus(caller, Globals.methods[strMethod], param, id, fault.fault.faultString);
-				Alert.show( "Серверная ошибка - ("+name+"->"+method+")\n" + fault.fault.faultString, "Error" );
+				Alert.show( "Серверная ошибка - ("+name+"->"+method+")\n" + fault.fault.faultString, "Error", 4, null, onCloseErrorAlert);
 				ro[method].removeEventListener(ResultEvent.RESULT,handleComplete);
 				ro[method].removeEventListener(FaultEvent.FAULT, handleFault); 
 				caller = null;
 				ro = null;
+				
+				function onCloseErrorAlert(e:Event):void{
+					if(errors[name+method] != null)
+						delete errors[name+method];
+				}
 			}   
 			
 			function checkResult(result:Object):Boolean{
@@ -154,7 +178,7 @@ package classes{
 			}
 			
 		}
-		
+				
 		public static function clearCache():void{
 			for(var name:String in cacheData){
 				cacheData[name] = 0;

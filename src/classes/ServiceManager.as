@@ -7,6 +7,10 @@ package classes{
 	import widgets.MainButtons;
 	import widgets.PrivateTasks;
 	
+	
+	/**
+	 * 	Сервисные запросы
+	 */
 	public class ServiceManager{
 		
 		private var oneTime:Boolean = true;
@@ -29,7 +33,9 @@ package classes{
 			else
 				idleRequest();
 		}
-		
+		/**
+		 * не работаем
+		 */
 		private function idleRequest():void{
 			if(!idle)
 				Remote.setRequest("ServiceManager", this, "refresh", {afk:1});

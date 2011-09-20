@@ -307,8 +307,8 @@
 				}
 			}
 			
-			private function onPushEnter(e:KeyboardEvent):void{		///костыль
-				if(e.keyCode==13){
+			private function onPushEnter(e:*, hand:Boolean = false):void{		///кастыль
+				if((e is KeyboardEvent && e.keyCode==13) || hand){
 					trace(e.currentTarget.id)
 					switch(e.currentTarget.id){
 						case "id_project" :	task_name.setFocus();
@@ -363,7 +363,7 @@
 										<s:Label text="Задача" width="130" textAlign="right"/>
 										<!--<s:TextInput keyUp="onPushEnter(event)" name="Задача" id="task_name" width="100%" text="{_data.name}" fontWeight="bold"/>
 										<utils:SugCombo keyUp="onPushEnter(event)" dataProvider="{new ArrayCollection()}" text="{_data.name}" name="Задача" id="task_name" width="100%"  fontWeight="bold"/>-->
-										<utils:SugInput tabIndex="2" keyUp="onPushEnter(event)" text="{_data.name}" sugtext="{_data.name}" name="Задача" id="task_name" width="100%"  fontWeight="bold"/>
+										<utils:SugInput tabIndex="2" keyUp="onPushEnter(event)" onClose="onPushEnter(event, true)" text="{_data.name}" sugtext="{_data.name}" name="Задача" id="task_name" width="100%"  fontWeight="bold"/>
 									</s:HGroup>
 									<s:HGroup width="100%" verticalAlign="top">
 										<s:Label text="Текст" width="130" textAlign="right"/>

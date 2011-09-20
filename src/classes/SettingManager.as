@@ -17,7 +17,10 @@ package classes{
 	import spark.components.NumericStepper;
 	import spark.components.VGroup;
 	import spark.layouts.VerticalLayout;
-		
+	
+	/**
+	 * 	Менеджер настроек
+	 */	
 	public class SettingManager	{
 		
 		

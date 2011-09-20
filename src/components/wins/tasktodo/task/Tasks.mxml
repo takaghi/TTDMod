@@ -365,7 +365,7 @@
 					<mx:AdvancedDataGridColumn headerText="#" width="40" 
 											   dataField="num"/>
 					<mx:AdvancedDataGridColumn headerText="Проект"
-											   dataField="id_project_text" width="140" showDataTips="true"/>
+											   dataField="id_project_text" width="143" showDataTips="true"/>
 					<mx:AdvancedDataGridColumn headerText="Задача" showDataTips="true"
 											   dataField="name"/>
 					<mx:AdvancedDataGridColumn id="statusCol" headerText="Статус"

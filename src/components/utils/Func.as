@@ -570,7 +570,6 @@ package components.utils{
 			return hh + ":"+ ((min < 10) ? ("0" + min) : min);
 		}
 		public static function convertStringTimeToNumber2( str:String ):Number {
-			
 			if(!str)
 				return 0;
 			var a:Array = str.split( ':' );

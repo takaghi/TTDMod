@@ -166,7 +166,7 @@ package{
 		public static var dayColors:Object = {job_a: 0xE8F2FE, job_m:0xE8F2FE, day_off:0xFFC5EE, truancy:0xff0000, sick:0xff0000, sick_list:0xff0000, weekend:0x50AFE4, holiday:0xFF5AC3, none:0xffffff, del:0xffeeee };
 		
 
-		public static var taskStatusColors:Object = {task_incomplete: 0xFF9C00, task_complete: 0x64af72, task_finish: 0x64af72, task_impossible:0xEE6161};
+		public static var taskStatusColors:Object = {task_incomplete: 0xFF9C00, task_delete: 0xD4D0C8, task_complete: 0x64af72, task_finish: 0x64af72, task_impossible:0xEE6161};
 		public static var taskPriorityColors:Object = {normal: 0xFF9C00, priority: 0xFF5400, urgency: 0xEE6161, all: 0xBD1717};
 		
 		
